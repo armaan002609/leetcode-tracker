@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { scrapeProfile, ScrapeStatus } from '@/lib/scraping/scrapeProfile';
 import { scrapeSemaphore, delayWithJitter } from '@/lib/scraping/rateLimiter';
+
+export const dynamic = 'force-dynamic';
 import { z } from 'zod';
 
 export const maxDuration = 300; // 5 minutes max per serverless invocation
