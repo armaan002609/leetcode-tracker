@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { extractUsername } from '@/lib/scraping/urlAllowlist';
 
+export const dynamic = 'force-dynamic';
+
 const LEETCODE_GRAPHQL_URL = 'https://leetcode.com/graphql';
 
 const RECENT_SUBMISSIONS_QUERY = `

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { scrapeProfile } from '@/lib/scraping/scrapeProfile';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
   // A CRON endpoint is typically triggered by a Vercel cron scheduler with an authorization header
   const authHeader = req.headers.get('authorization');
