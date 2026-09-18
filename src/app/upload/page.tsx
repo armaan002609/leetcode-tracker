@@ -87,7 +87,15 @@ export default function UploadPage() {
       });
       
       if (!res.ok) {
-        throw new Error('Failed to save students');
+        let errorMsg = `Server error ${res.status}`;
+        try {
+          const errData = await res.json();
+          if (errData.error) errorMsg += `: ${errData.error}`;
+          if (errData.details) errorMsg += ` - ${JSON.stringify(errData.details)}`;
+        } catch(e) {
+          errorMsg += `: ${await res.text()}`;
+        }
+        throw new Error(errorMsg);
       }
       
       router.push(`/`); // Redirect to dashboard
