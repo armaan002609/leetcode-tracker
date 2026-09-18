@@ -80,7 +80,9 @@ export default function Dashboard() {
     if (status === "authenticated") {
       fetchStudents();
       if (isAdmin) {
-        fetch('/api/users').then(r => r.ok && r.json().then(setUsers));
+        fetch('/api/users').then(async r => {
+          if (r.ok) setUsers(await r.json());
+        });
       }
     }
   }, [status, isAdmin]);
