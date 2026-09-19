@@ -40,7 +40,9 @@ export async function POST(req: Request) {
     const pemMatch = privateKey.match(/-----BEGIN PRIVATE KEY-----([\s\S]*?)-----END PRIVATE KEY-----/);
     if (pemMatch) {
       const base64Str = pemMatch[1].replace(/\s+/g, ''); // strip all whitespace from base64 payload
-      privateKey = `-----BEGIN PRIVATE KEY-----\n${base64Str}\n-----END PRIVATE KEY-----\n`;
+      // Node.js crypto (OpenSSL 3.0+) strictly requires PEM files to be wrapped at 64 characters
+      const wrappedBase64 = base64Str.match(/.{1,64}/g)?.join('\n') || base64Str;
+      privateKey = `-----BEGIN PRIVATE KEY-----\n${wrappedBase64}\n-----END PRIVATE KEY-----\n`;
     }
 
     if (!clientEmail || !privateKey) {
