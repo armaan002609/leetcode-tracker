@@ -27,18 +27,20 @@ export async function POST(req: Request) {
 
     // Google API Authentication
     const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+    // Aggressive Private Key Normalization
     let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
-    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-      privateKey = privateKey.slice(1, -1);
-    }
-    privateKey = privateKey.replace(/\\n/g, '\n');
     
-    if (!privateKey.includes('\n') && privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-      const match = privateKey.match(/-----BEGIN PRIVATE KEY-----(.*)-----END PRIVATE KEY-----/);
-      if (match) {
-        const base64Str = match[1].replace(/\s+/g, '');
-        privateKey = `-----BEGIN PRIVATE KEY-----\n${base64Str}\n-----END PRIVATE KEY-----\n`;
-      }
+    // Remove surrounding quotes if accidentally copied
+    privateKey = privateKey.replace(/^["']|["']$/g, '');
+    
+    // Replace literal escaped newlines with actual newlines
+    privateKey = privateKey.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
+    
+    // Forcefully reconstruct the PEM format to eliminate any Vercel whitespace/newline corruption
+    const pemMatch = privateKey.match(/-----BEGIN PRIVATE KEY-----([\s\S]*?)-----END PRIVATE KEY-----/);
+    if (pemMatch) {
+      const base64Str = pemMatch[1].replace(/\s+/g, ''); // strip all whitespace from base64 payload
+      privateKey = `-----BEGIN PRIVATE KEY-----\n${base64Str}\n-----END PRIVATE KEY-----\n`;
     }
 
     if (!clientEmail || !privateKey) {
