@@ -27,7 +27,19 @@ export async function POST(req: Request) {
 
     // Google API Authentication
     const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
-    const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
+    if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+      privateKey = privateKey.slice(1, -1);
+    }
+    privateKey = privateKey.replace(/\\n/g, '\n');
+    
+    if (!privateKey.includes('\n') && privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+      const match = privateKey.match(/-----BEGIN PRIVATE KEY-----(.*)-----END PRIVATE KEY-----/);
+      if (match) {
+        const base64Str = match[1].replace(/\s+/g, '');
+        privateKey = `-----BEGIN PRIVATE KEY-----\n${base64Str}\n-----END PRIVATE KEY-----\n`;
+      }
+    }
 
     if (!clientEmail || !privateKey) {
       return NextResponse.json({ 
