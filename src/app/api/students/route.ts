@@ -51,37 +51,43 @@ export async function POST(req: Request) {
 
     const studentsToUpsert = parsed.data;
 
-    // We use a transaction to upsert all students
-    // SQLite does not support createMany with skipDuplicates very well in some versions,
-    // so we can loop and upsert
-    const results = await prisma.$transaction(
-      studentsToUpsert.map(student => 
-        prisma.student.upsert({
-          where: { rollNumber: student.rollNumber },
-          update: {
-            name: student.name,
-            branch: student.branch,
-            semester: student.semester,
-            section: student.section,
-            mentor: student.mentor,
-            url: student.url,
-            // DO NOT OVERWRITE scrape stats on re-upload
-          },
-          create: {
-            rollNumber: student.rollNumber,
-            name: student.name,
-            branch: student.branch,
-            semester: student.semester,
-            section: student.section,
-            mentor: student.mentor,
-            url: student.url,
-            status: 'pending'
-          }
-        })
-      )
-    );
+    // Process upserts in chunks to avoid connection timeouts or limits
+    const CHUNK_SIZE = 50;
+    let successCount = 0;
 
-    return NextResponse.json({ message: 'Successfully uploaded', count: results.length });
+    for (let i = 0; i < studentsToUpsert.length; i += CHUNK_SIZE) {
+      const chunk = studentsToUpsert.slice(i, i + CHUNK_SIZE);
+      
+      await prisma.$transaction(
+        chunk.map(student => 
+          prisma.student.upsert({
+            where: { rollNumber: student.rollNumber },
+            update: {
+              name: student.name,
+              branch: student.branch,
+              semester: student.semester,
+              section: student.section,
+              mentor: student.mentor,
+              url: student.url,
+              // DO NOT OVERWRITE scrape stats on re-upload
+            },
+            create: {
+              rollNumber: student.rollNumber,
+              name: student.name,
+              branch: student.branch,
+              semester: student.semester,
+              section: student.section,
+              mentor: student.mentor,
+              url: student.url,
+              status: 'pending'
+            }
+          })
+        )
+      );
+      successCount += chunk.length;
+    }
+
+    return NextResponse.json({ message: 'Successfully uploaded', count: successCount });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
