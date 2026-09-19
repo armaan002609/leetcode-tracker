@@ -56,6 +56,18 @@ export default function Dashboard() {
   const [newPassword, setNewPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
+  // Export states
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isGoogleSheetModalOpen, setIsGoogleSheetModalOpen] = useState(false);
+  const [googleSheetId, setGoogleSheetId] = useState("");
+  const [googleSheetName, setGoogleSheetName] = useState("Sheet1");
+  const [isExportingToSheets, setIsExportingToSheets] = useState(false);
+
+  useEffect(() => {
+    const savedId = localStorage.getItem('leetcode_tracker_sheet_id');
+    if (savedId) setGoogleSheetId(savedId);
+  }, []);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -144,6 +156,49 @@ export default function Dashboard() {
     const csv = generateCsv(exportRows);
     const dateStr = new Date().toISOString().split('T')[0];
     downloadCsv(csv, `leetcode_tracker_export_${dateStr}.csv`);
+    setIsExportMenuOpen(false);
+  };
+
+  const handleGoogleSheetsExport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!googleSheetId) return;
+
+    localStorage.setItem('leetcode_tracker_sheet_id', googleSheetId);
+    setIsExportingToSheets(true);
+
+    const exportRows = rows.map(r => ({
+      ...r,
+      solved_today: r.solvedToday,
+      total_solved: r.totalSolved,
+      easy_solved: r.easySolved,
+      medium_solved: r.mediumSolved,
+      hard_solved: r.hardSolved,
+      global_rank: r.globalRank,
+    }));
+
+    try {
+      const res = await fetch('/api/export/google-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spreadsheetId: googleSheetId,
+          sheetName: googleSheetName,
+          data: exportRows
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("Successfully exported to Google Sheets!");
+        setIsGoogleSheetModalOpen(false);
+      } else {
+        alert(`Export failed: ${data.error}`);
+      }
+    } catch (err) {
+      alert("An error occurred during export.");
+      console.error(err);
+    } finally {
+      setIsExportingToSheets(false);
+    }
   };
 
   const handleRefresh = (rollNumbers: string[]) => {
@@ -509,14 +564,41 @@ export default function Dashboard() {
               >
                 <RefreshCw size={16} className={isScraping ? 'animate-spin' : ''} /> Refresh All
               </button>
-              <button 
-                onClick={handleExport}
-                disabled={processedCount === 0}
-                className="btn btn-primary"
-                style={{flex: '1 1 auto', whiteSpace: 'nowrap'}}
-              >
-                <Download size={16} /> Export CSV
-              </button>
+              
+              <div style={{ position: 'relative', flex: '1 1 auto' }}>
+                <button 
+                  onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                  disabled={processedCount === 0}
+                  className="btn btn-primary"
+                  style={{width: '100%', whiteSpace: 'nowrap'}}
+                >
+                  <Download size={16} /> Export Data
+                </button>
+                {isExportMenuOpen && processedCount > 0 && (
+                  <>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setIsExportMenuOpen(false)} />
+                    <div className="animate-slide-up" style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: 'white', border: '1px solid var(--surface-border)', borderRadius: 8, boxShadow: 'var(--shadow-md)', minWidth: 200, zIndex: 20, padding: '8px 0', display: 'flex', flexDirection: 'column' }}>
+                      <button 
+                        onClick={handleExport}
+                        style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--foreground)' }}
+                        onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                        onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        Export as CSV
+                      </button>
+                      <button 
+                        onClick={() => { setIsExportMenuOpen(false); setIsGoogleSheetModalOpen(true); }}
+                        style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--foreground)' }}
+                        onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                        onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        Export to Google Sheets
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
               {isAdmin && (
                 <button 
                   onClick={handleClearData}
@@ -879,6 +961,57 @@ export default function Dashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Google Sheets Modal */}
+      {isGoogleSheetModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div className="dashboard-card animate-fade-in" style={{ width: '100%', maxWidth: 500, margin: 0 }}>
+            <div className="card-header border-b border-surface-border">
+              <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <img src="https://upload.wikimedia.org/wikipedia/commons/3/30/Google_Sheets_logo_%282014-2020%29.svg" alt="Sheets" style={{width: 20, height: 20}} />
+                Export to Google Sheets
+              </h3>
+              <button onClick={() => setIsGoogleSheetModalOpen(false)} className="icon-btn" style={{marginRight: -8}}><X size={20} /></button>
+            </div>
+            <div className="card-body">
+              <form onSubmit={handleGoogleSheetsExport}>
+                <p className="text-sm text-muted mb-6">
+                  Enter your Google Spreadsheet ID to sync the processed data. The server must be configured with a valid Google Service Account in the environment variables.
+                </p>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', fontWeight: 500 }}>Spreadsheet ID</label>
+                  <input 
+                    type="text" 
+                    value={googleSheetId} 
+                    onChange={e => setGoogleSheetId(e.target.value)}
+                    placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
+                    required
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 6, outline: 'none', fontFamily: 'monospace', fontSize: '0.85rem' }}
+                  />
+                  <p style={{fontSize: '0.75rem', marginTop: 4, color: 'var(--muted)'}}>Found in the URL: docs.google.com/spreadsheets/d/<strong>[SPREADSHEET_ID]</strong>/edit</p>
+                </div>
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', fontWeight: 500 }}>Sheet Name</label>
+                  <input 
+                    type="text" 
+                    value={googleSheetName} 
+                    onChange={e => setGoogleSheetName(e.target.value)}
+                    placeholder="Sheet1"
+                    required
+                    style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 6, outline: 'none' }}
+                  />
+                </div>
+                <div className="flex justify-end gap-3">
+                  <button type="button" onClick={() => setIsGoogleSheetModalOpen(false)} className="btn btn-outline">Cancel</button>
+                  <button type="submit" disabled={isExportingToSheets} className="btn btn-primary" style={{ background: '#0F9D58', borderColor: '#0F9D58' }}>
+                    {isExportingToSheets ? <RotateCw size={16} className="animate-spin" /> : 'Start Export'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
