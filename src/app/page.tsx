@@ -986,7 +986,11 @@ export default function Dashboard() {
                   <input 
                     type="text" 
                     value={googleSheetId} 
-                    onChange={e => setGoogleSheetId(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const match = val.match(/[-\w]{25,}/);
+                      setGoogleSheetId(match ? match[0] : val);
+                    }}
                     placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
                     required
                     style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 6, outline: 'none', fontFamily: 'monospace', fontSize: '0.85rem' }}
