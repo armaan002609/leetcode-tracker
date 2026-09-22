@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const studentId = params.id;
+    const { id: studentId } = await params;
     
     const assignments = await prisma.studentAssignment.findMany({
       where: { studentId },
