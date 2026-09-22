@@ -107,7 +107,7 @@ export default function DataExplorer() {
             </div>
             <div className="profile-info">
               <h2>Full Data Explorer</h2>
-              <div style={{opacity: 0.9, fontSize: '0.9rem', marginTop: 4}}>
+              <div style={{opacity: 0.9, fontSize: '0.9rem', marginTop: 4, maxWidth: '280px', lineHeight: 1.4}}>
                 Browse {totalRecords} total student records and their complete submission history.
               </div>
             </div>
