@@ -30,6 +30,8 @@ export default function AssignmentsPage() {
   const [editTargetSection, setEditTargetSection] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const [availableBranches, setAvailableBranches] = useState<string[]>([]);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -37,8 +39,20 @@ export default function AssignmentsPage() {
       router.push("/");
     } else if (status === "authenticated") {
       fetchAssignments();
+      fetchBranches();
     }
   }, [status, router, session]);
+
+  const fetchBranches = async () => {
+    try {
+      const res = await fetch("/api/admin/branches");
+      if (res.ok) {
+        setAvailableBranches(await res.json());
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchAssignments = async () => {
     try {
@@ -225,13 +239,16 @@ export default function AssignmentsPage() {
                 <div style={{ display: 'flex', gap: '16px' }}>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Target Branch (Optional)</label>
-                    <input 
-                      type="text" 
+                    <select 
                       value={targetBranch}
                       onChange={(e) => setTargetBranch(e.target.value)}
-                      placeholder="e.g. CSE"
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
-                    />
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', backgroundColor: 'var(--background)' }}
+                    >
+                      <option value="">All Branches</option>
+                      {availableBranches.map(b => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
                   </div>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Target Section (Optional)</label>
@@ -418,12 +435,16 @@ export default function AssignmentsPage() {
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Target Branch (Optional)</label>
-                  <input 
-                    type="text" 
+                  <select 
                     value={editTargetBranch}
                     onChange={(e) => setEditTargetBranch(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
-                  />
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', backgroundColor: 'var(--background)' }}
+                  >
+                    <option value="">All Branches</option>
+                    {availableBranches.map(b => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Target Section (Optional)</label>
