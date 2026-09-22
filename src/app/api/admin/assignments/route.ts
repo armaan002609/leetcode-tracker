@@ -51,11 +51,31 @@ export async function POST(req: Request) {
 
     // Create StudentAssignments
     if (students.length > 0) {
-      const studentAssignmentsData = students.map(student => ({
-        studentId: student.id,
-        assignmentId: assignment.id,
-        status: 'pending'
-      }));
+      // Pre-check if any of these students have ALREADY completed the question
+      const existingSubmissions = await prisma.submission.findMany({
+        where: {
+          titleSlug,
+          studentId: { in: students.map(s => s.id) }
+        }
+      });
+      
+      const submissionMap = new Map();
+      existingSubmissions.forEach(sub => {
+        // If a student submitted multiple times, we just take the first one found or oldest
+        if (!submissionMap.has(sub.studentId)) {
+          submissionMap.set(sub.studentId, sub.timestamp);
+        }
+      });
+
+      const studentAssignmentsData = students.map(student => {
+        const completedAt = submissionMap.get(student.id);
+        return {
+          studentId: student.id,
+          assignmentId: assignment.id,
+          status: completedAt ? 'completed' : 'pending',
+          completedAt: completedAt || null
+        };
+      });
 
       await prisma.studentAssignment.createMany({
         data: studentAssignmentsData,
