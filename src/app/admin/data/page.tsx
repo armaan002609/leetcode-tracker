@@ -83,7 +83,12 @@ export default function DataExplorer() {
   };
 
   if (status === "loading" || (loading && data.length === 0)) {
-    return <div className="loading-spinner" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
+    return (
+      <div className="enterprise-loader-wrapper">
+        <div className="pulse-logo">L</div>
+        <div className="loader-text">Loading Data Explorer...</div>
+      </div>
+    );
   }
 
   return (
@@ -252,6 +257,15 @@ export default function DataExplorer() {
                     <tr>
                       <td colSpan={7} style={{ textAlign: 'center', padding: '48px', color: 'var(--muted)' }}>
                         No records found
+                      </td>
+                    </tr>
+                  )}
+                  {loading && data.length > 0 && (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '24px' }}>
+                        <div className="skeleton-row" style={{ width: '100%', marginBottom: '12px' }}></div>
+                        <div className="skeleton-row" style={{ width: '90%', marginBottom: '12px' }}></div>
+                        <div className="skeleton-row" style={{ width: '95%' }}></div>
                       </td>
                     </tr>
                   )}

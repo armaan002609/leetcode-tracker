@@ -200,7 +200,12 @@ export default function AssignmentsPage() {
   };
 
   if (loading || status === "loading") {
-    return <div className="p-8 text-center">Loading...</div>;
+    return (
+      <div className="enterprise-loader-wrapper">
+        <div className="pulse-logo">L</div>
+        <div className="loader-text">Loading Assignments...</div>
+      </div>
+    );
   }
 
   return (
@@ -371,7 +376,11 @@ export default function AssignmentsPage() {
                             <td colSpan={4} style={{ padding: '0 16px 24px 16px', background: 'var(--surface)' }}>
                               <div style={{ border: '1px solid var(--surface-border)', borderRadius: '8px', overflow: 'hidden' }}>
                                 {loadingDetails ? (
-                                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--muted)' }}>Loading students...</div>
+                                  <div style={{ padding: '24px' }}>
+                                    <div className="skeleton-row" style={{ width: '100%', marginBottom: '12px' }}></div>
+                                    <div className="skeleton-row" style={{ width: '80%', marginBottom: '12px' }}></div>
+                                    <div className="skeleton-row" style={{ width: '90%' }}></div>
+                                  </div>
                                 ) : assignmentDetails ? (
                                   <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
                                     <table className="data-table" style={{ margin: 0 }}>
