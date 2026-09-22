@@ -370,7 +370,14 @@ export default function Dashboard() {
     };
   }, [selectedStudentId]);
 
-  if (!isReady || status === "loading") return <div className="p-4 text-center"><RotateCw className="animate-spin text-muted" size={32} style={{margin: '40px auto'}} /></div>;
+  if (!isReady || status === "loading") {
+    return (
+      <div className="enterprise-loader-wrapper">
+        <div className="pulse-logo">L</div>
+        <div className="loader-text">Loading Dashboard...</div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -920,7 +927,11 @@ export default function Dashboard() {
                     <h3 className="card-title">Assigned Questions</h3>
                   </div>
                   {isLoadingAssignments ? (
-                    <div className="p-8 text-center text-muted"><RotateCw className="animate-spin" size={24} style={{margin: '0 auto'}} /></div>
+                    <div style={{ padding: '24px' }}>
+                      <div className="skeleton-row" style={{ width: '100%', marginBottom: '12px' }}></div>
+                      <div className="skeleton-row" style={{ width: '80%', marginBottom: '12px' }}></div>
+                      <div className="skeleton-row" style={{ width: '90%' }}></div>
+                    </div>
                   ) : assignedQuestions.length > 0 ? (
                     <table className="data-table">
                       <thead>
@@ -969,7 +980,11 @@ export default function Dashboard() {
                     )}
                   </div>
                   {isLoadingSubmissions ? (
-                    <div className="p-8 text-center text-muted"><RotateCw className="animate-spin" size={24} style={{margin: '0 auto'}} /></div>
+                    <div style={{ padding: '24px' }}>
+                      <div className="skeleton-row" style={{ width: '100%', marginBottom: '12px' }}></div>
+                      <div className="skeleton-row" style={{ width: '85%', marginBottom: '12px' }}></div>
+                      <div className="skeleton-row" style={{ width: '95%' }}></div>
+                    </div>
                   ) : recentSubmissions.length > 0 ? (
                     <table className="data-table">
                       <thead>
