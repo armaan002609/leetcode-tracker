@@ -389,7 +389,7 @@ export default function Dashboard() {
           <span>LeetCode Tracker</span>
         </div>
         <div className="topnav-actions" style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-          <div className="search-wrapper" style={{position: 'relative', width: '250px'}}>
+          <div className="search-wrapper" style={{position: 'relative', width: '100%', maxWidth: '250px'}}>
             <Search size={16} className="text-muted" style={{position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)'}} />
             <input 
               type="text" 
@@ -401,14 +401,14 @@ export default function Dashboard() {
           </div>
           {isAdmin && (
             <div style={{display: 'flex', gap: '8px'}}>
-              <Link href="/admin/data" className="btn" title="Full Data Explorer" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>
-                <Database size={16} /> Full Data
+              <Link href="/admin/data" className="btn hide-text-on-mobile" title="Full Data Explorer" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>
+                <Database size={16} /> <span>Full Data</span>
               </Link>
-              <Link href="/admin/assignments" className="btn" title="Manage Assignments" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>
-                <Target size={16} /> Assignments
+              <Link href="/admin/assignments" className="btn hide-text-on-mobile" title="Manage Assignments" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>
+                <Target size={16} /> <span>Assignments</span>
               </Link>
-              <Link href="/upload" className="btn" title="Upload Roster" style={{ background: 'white', color: 'var(--primary)' }}>
-                <UploadCloud size={16} /> Upload Data
+              <Link href="/upload" className="btn hide-text-on-mobile" title="Upload Roster" style={{ background: 'white', color: 'var(--primary)' }}>
+                <UploadCloud size={16} /> <span>Upload Data</span>
               </Link>
             </div>
           )}
@@ -469,7 +469,7 @@ export default function Dashboard() {
             <User size={32} />
           </div>
           <div className="profile-info">
-            <h2>Dashboard Overview</h2>
+            <h1 style={{margin: 0, fontSize: '1.8rem', fontWeight: 'bold'}}>Dashboard Overview</h1>
             <div style={{opacity: 0.8, fontSize: '0.9rem', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6}}>
               <div style={{width: 24, height: 24, background: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                 <span style={{color: 'var(--primary)', fontWeight: 'bold', fontSize: 12}}>L</span>
@@ -478,7 +478,7 @@ export default function Dashboard() {
             </div>
           </div>
           
-          <div className="quick-stats-bar" style={{display: 'flex', gap: '48px', marginLeft: 'auto', marginRight: '48px', background: 'transparent'}}>
+          <div className="quick-stats-bar" style={{display: 'flex', gap: '48px', marginLeft: 'auto', background: 'transparent'}}>
             <div className="quick-stat">
               <span className="quick-stat-label">Processed</span>
               <span className="quick-stat-value" style={{color: 'var(--foreground)'}}>{processedCount} <span style={{opacity: 0.7, fontSize: '0.85em', color: 'var(--muted)'}}>/ {rows.length}</span></span>

@@ -105,7 +105,7 @@ export default function DataExplorer() {
         <div className="curved-banner-container">
           <div className="curved-banner"></div>
         </div>
-        <div className="profile-banner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="profile-banner flex-wrap justify-between" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div className="profile-avatar">
               <Database size={32} />
@@ -117,9 +117,9 @@ export default function DataExplorer() {
               </div>
             </div>
           </div>
-          <div style={{ paddingRight: '24px' }}>
-            <a href="/api/admin/submissions/export" download className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Download size={18} /> Download CSV
+          <div style={{ paddingRight: '16px', margin: '0 auto' }}>
+            <a href="/api/admin/submissions/export" download className="btn btn-primary hide-text-on-mobile" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Download size={18} /> <span>Download CSV</span>
             </a>
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function DataExplorer() {
           <div className="dashboard-card" style={{ margin: 0, width: '100%' }}>
             
             <div style={{ padding: '24px', borderBottom: '1px solid var(--surface-border)', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div style={{ flex: '1 1 300px' }}>
+              <div style={{ flex: '1 1 100%', minWidth: '250px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Search Name or Roll Number</label>
                 <div style={{ position: 'relative' }}>
                   <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
