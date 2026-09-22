@@ -542,29 +542,69 @@ button {
   }
   
   .topnav {
-    padding: 0 16px;
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .topnav-brand span {
+    display: none; /* Hide 'LeetCode Tracker' text on small screens */
+  }
+
+  .hide-text-on-mobile span {
+    display: none;
+  }
+  
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .topnav-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .topnav-actions .search-wrapper {
+    flex-grow: 1;
+    width: auto !important;
   }
   
   .curved-banner {
     width: 100%;
-    border-bottom-right-radius: 20%;
-    border-bottom-left-radius: 20%;
-    top: -50px;
-    height: 220px;
+    border-bottom-right-radius: 10%;
+    border-bottom-left-radius: 10%;
+    top: 0;
+    height: auto;
+    min-height: 180px;
+    position: absolute;
   }
 
   .profile-banner {
     flex-direction: column;
-    align-items: flex-start;
-    padding: 16px 0 24px 0;
+    align-items: center;
+    padding: 24px 0;
+    text-align: center;
+  }
+
+  .profile-banner-info h1 {
+    font-size: 1.5rem;
+  }
+
+  .profile-banner-info p {
+    font-size: 0.9rem;
   }
   
   .quick-stats-bar {
-    margin-left: 0 !important;
-    margin-top: 16px;
-    gap: 24px !important;
+    margin: 16px 0 0 0 !important;
+    gap: 12px !important;
     flex-wrap: wrap;
     width: 100%;
+    justify-content: center;
+  }
+
+  .quick-stat {
+    flex: 1 1 45%;
+    min-width: 140px;
   }
 
   .table-actions {
@@ -584,8 +624,12 @@ button {
   }
   
   .quick-stats-bar {
-    gap: 16px !important;
     flex-direction: column;
+    align-items: center;
+  }
+
+  .quick-stat {
+    width: 100%;
   }
 }
 

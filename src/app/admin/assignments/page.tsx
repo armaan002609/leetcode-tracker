@@ -307,7 +307,8 @@ export default function AssignmentsPage() {
               {assignments.length === 0 ? (
                 <div className="p-8 text-center text-muted">No assignments created yet.</div>
               ) : (
-                <table className="data-table">
+                <div className="data-table-wrapper">
+                  <table className="data-table">
                   <thead>
                     <tr>
                       <th style={{padding: '12px 16px'}}>Question</th>
@@ -428,13 +429,14 @@ export default function AssignmentsPage() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
             
             </div>
 
             {/* Right Column: Student Lookup */}
-            <div style={{ flex: '0 0 400px', width: '100%', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ flex: '1 1 100%', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div className="dashboard-card" style={{ margin: 0 }}>
                 <div className="card-header">
                   <h3 className="card-title">Student Lookup</h3>
