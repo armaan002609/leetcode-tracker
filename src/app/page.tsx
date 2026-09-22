@@ -5,7 +5,7 @@ import { generateCsv, downloadCsv } from "@/lib/export/generateCsv";
 import { 
   CheckCircle2, Clock, Lock, HelpCircle, 
   AlertTriangle, RotateCw, Download, Search, AlertCircle,
-  Menu, User, Grid, Home, ArrowLeft, Target, Activity, Award, UploadCloud, RefreshCw, Trash2, X, LogIn, LogOut
+  Menu, User, Grid, Home, ArrowLeft, Target, Activity, Award, UploadCloud, RefreshCw, Trash2, X, LogIn, LogOut, Database
 } from "lucide-react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
@@ -393,6 +393,9 @@ export default function Dashboard() {
           </div>
           {isAdmin && (
             <div style={{display: 'flex', gap: '8px'}}>
+              <Link href="/admin/data" className="btn btn-primary" title="Full Data Explorer" style={{background: '#10b981', borderColor: '#10b981'}}>
+                <Database size={16} /> Full Data
+              </Link>
               <Link href="/admin/assignments" className="btn btn-primary" title="Manage Assignments" style={{background: '#6366f1', borderColor: '#6366f1'}}>
                 <Target size={16} /> Assignments
               </Link>
