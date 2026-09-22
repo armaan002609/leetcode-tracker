@@ -846,7 +846,7 @@ export default function Dashboard() {
                 </div>
                 <div className="profile-info">
                   <h2>{selectedStudent.name}</h2>
-                  <div style={{opacity: 0.95, fontSize: '0.85rem', marginTop: 8, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px'}}>
+                  <div style={{opacity: 0.95, fontSize: '0.85rem', marginTop: 8, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
                     <div style={{background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: '100px', display: 'flex', alignItems: 'center', gap: 6}}>
                       <div style={{width: 16, height: 16, background: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                         <span style={{color: 'var(--primary)', fontWeight: 'bold', fontSize: 10}}>L</span>
@@ -875,7 +875,7 @@ export default function Dashboard() {
                     )}
                   </div>
                 </div>
-                <div className="quick-stats-bar" style={{display: 'flex', gap: '12px', marginLeft: 'auto', marginRight: '16px', marginTop: '-16px', background: 'transparent', alignItems: 'center'}}>
+                <div style={{position: 'absolute', top: 16, right: 16, display: 'flex', gap: '8px', zIndex: 10}}>
                   <button 
                     onClick={() => handleRefresh([selectedStudent.rollNumber])}
                     disabled={isScraping}
