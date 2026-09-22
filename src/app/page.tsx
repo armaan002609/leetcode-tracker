@@ -326,9 +326,9 @@ export default function Dashboard() {
   const selectedStudent = useMemo(() => rows.find(r => r.id === selectedStudentId), [rows, selectedStudentId]);
 
   useEffect(() => {
-    if (selectedStudent?.url) {
+    if (selectedStudent) {
       setIsLoadingSubmissions(true);
-      fetch(`/api/recent-submissions?url=${encodeURIComponent(selectedStudent.url)}`)
+      fetch(`/api/students/${selectedStudent.id}/submissions`)
         .then(r => r.json())
         .then(data => {
           if (Array.isArray(data)) setRecentSubmissions(data);
