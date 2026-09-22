@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft, Plus, BookOpen, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Plus, BookOpen, Trash2, Users, Download } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -203,7 +203,18 @@ export default function AssignmentsPage() {
                           </div>
                         </td>
                         <td style={{padding: '12px 16px', textAlign: 'right', fontSize: '0.85rem', color: 'var(--muted)'}}>
-                          {new Date(a.createdAt).toLocaleDateString()}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
+                            <span>{new Date(a.createdAt).toLocaleDateString()}</span>
+                            <a 
+                              href={`/api/admin/assignments/${a.id}/export`}
+                              download
+                              title="Download Report"
+                              className="icon-btn"
+                              style={{ color: 'var(--primary)', textDecoration: 'none' }}
+                            >
+                              <Download size={16} />
+                            </a>
+                          </div>
                         </td>
                       </tr>
                     ))}
