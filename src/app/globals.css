@@ -550,6 +550,28 @@ button {
     padding: 16px;
   }
   
+  .hide-on-desktop {
+    display: flex !important;
+  }
+
+  .search-input-container {
+    display: none;
+  }
+  
+  .search-input-container.active {
+    display: block;
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    z-index: 50;
+    box-shadow: var(--shadow-md);
+    border-radius: var(--radius-sm);
+  }
+  
+  .search-input-container.active input {
+    padding-left: 12px !important;
+  }
+  
   .topnav {
     padding: 12px 16px;
     flex-wrap: wrap;
@@ -570,13 +592,16 @@ button {
     width: auto !important;
   }
   
+  .curved-banner-container {
+    height: 250px;
+  }
+  
   .curved-banner {
     width: 100%;
     border-bottom-right-radius: 10%;
     border-bottom-left-radius: 10%;
     top: 0;
-    height: auto;
-    min-height: 180px;
+    height: 100%;
     position: absolute;
   }
 

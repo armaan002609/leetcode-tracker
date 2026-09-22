@@ -53,6 +53,7 @@ export default function Dashboard() {
 
   // Change Password states
   const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -388,15 +389,25 @@ export default function Dashboard() {
             <span>LeetCode Tracker</span>
           </div>
           <div className="topnav-actions" style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-            <div className="search-wrapper" style={{position: 'relative', width: '100%', maxWidth: '250px'}}>
-              <Search size={16} className="text-muted" style={{position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)'}} />
-              <input 
-                type="text" 
-                placeholder="Search name/roll..." 
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                style={{padding: '8px 12px 8px 32px', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', width: '100%', color: 'var(--foreground)', background: 'white'}}
-              />
+            <div className="search-wrapper" style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
+              <button 
+                className="icon-btn hide-on-desktop" 
+                onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+                style={{background: 'white', color: 'var(--muted)', border: 'none', cursor: 'pointer', display: 'none'}}
+              >
+                <Search size={18} />
+              </button>
+              
+              <div className={`search-input-container ${isSearchExpanded ? 'active' : ''}`}>
+                <Search size={16} className="text-muted hide-on-mobile" style={{position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)'}} />
+                <input 
+                  type="text" 
+                  placeholder="Search name/roll..." 
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  style={{padding: '8px 12px 8px 32px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', width: '250px', color: 'var(--foreground)', background: 'white'}}
+                />
+              </div>
             </div>
             
             <div style={{ position: 'relative' }}>
@@ -664,8 +675,8 @@ export default function Dashboard() {
             </div>
 
             {isAdmin && (
-              <div style={{display: 'flex', gap: '16px', marginTop: '16px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--surface-border)', alignItems: 'center'}}>
-                <span style={{fontSize: '0.9rem', fontWeight: 600}}>{selectedStudents.length} students selected</span>
+              <div style={{display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '16px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--surface-border)', alignItems: 'center'}}>
+                <span style={{fontSize: '0.9rem', fontWeight: 600, minWidth: 'max-content'}}>{selectedStudents.length} students selected</span>
                 <select 
                   value={selectedUserIdToAssign}
                   onChange={e => setSelectedUserIdToAssign(e.target.value)}
@@ -684,7 +695,7 @@ export default function Dashboard() {
                 >
                   Assign to User
                 </button>
-                <Link href="/admin/users" className="btn btn-outline" style={{padding: '8px 16px', fontSize: '0.9rem', marginLeft: 'auto'}}>
+                <Link href="/admin/users" className="btn btn-outline" style={{padding: '8px 16px', fontSize: '0.9rem', flex: '1 1 auto', textAlign: 'center'}}>
                   Manage Users
                 </Link>
               </div>
