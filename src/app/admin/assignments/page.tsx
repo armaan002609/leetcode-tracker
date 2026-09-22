@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Plus, BookOpen, Trash2, Users, Download } from "lucide-react";
+import { ArrowLeft, Plus, BookOpen, Trash2, Users, Download, Edit2, X } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -22,6 +22,12 @@ export default function AssignmentsPage() {
   const [expandedAssignmentId, setExpandedAssignmentId] = useState<string | null>(null);
   const [assignmentDetails, setAssignmentDetails] = useState<any>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+
+  const [editingAssignment, setEditingAssignment] = useState<any>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editTargetBranch, setEditTargetBranch] = useState("");
+  const [editTargetSection, setEditTargetSection] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -65,6 +71,56 @@ export default function AssignmentsPage() {
       console.error(e);
     } finally {
       setLoadingDetails(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this assignment?")) return;
+    try {
+      const res = await fetch(`/api/admin/assignments/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchAssignments();
+        if (expandedAssignmentId === id) setExpandedAssignmentId(null);
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete");
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  };
+
+  const openEditModal = (assignment: any) => {
+    setEditingAssignment(assignment);
+    setEditTitle(assignment.title || "");
+    setEditTargetBranch(assignment.targetBranch || "");
+    setEditTargetSection(assignment.targetSection || "");
+  };
+
+  const handleUpdateAssignment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    try {
+      const res = await fetch(`/api/admin/assignments/${editingAssignment.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editTitle,
+          targetBranch: editTargetBranch,
+          targetSection: editTargetSection
+        })
+      });
+      if (res.ok) {
+        setEditingAssignment(null);
+        fetchAssignments();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to update");
+      }
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -234,13 +290,29 @@ export default function AssignmentsPage() {
                           <td style={{padding: '12px 16px', textAlign: 'right', fontSize: '0.85rem', color: 'var(--muted)'}}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
                               <span>{new Date(a.createdAt).toLocaleDateString()}</span>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); openEditModal(a); }}
+                                className="icon-btn"
+                                title="Edit"
+                                style={{ color: 'var(--muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDelete(a.id); }}
+                                className="icon-btn"
+                                title="Delete"
+                                style={{ color: 'var(--destructive)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
                               <a 
                                 href={`/api/admin/assignments/${a.id}/export`}
                                 download
                                 onClick={e => e.stopPropagation()}
                                 title="Download Report"
                                 className="icon-btn"
-                                style={{ color: 'var(--primary)', textDecoration: 'none' }}
+                                style={{ color: 'var(--primary)', textDecoration: 'none', padding: 4 }}
                               >
                                 <Download size={16} />
                               </a>
@@ -306,6 +378,60 @@ export default function AssignmentsPage() {
           </div>
         </div>
       </main>
+
+      {/* Edit Modal */}
+      {editingAssignment && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(0,0,0,0.5)', 
+          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px'
+        }}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '500px', boxShadow: 'var(--shadow-xl)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0 }}>Edit Assignment</h3>
+              <button onClick={() => setEditingAssignment(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}><X size={20}/></button>
+            </div>
+            <form onSubmit={handleUpdateAssignment} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Title</label>
+                <input 
+                  type="text" 
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                  required
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '16px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Target Branch (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={editTargetBranch}
+                    onChange={(e) => setEditTargetBranch(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Target Section (Optional)</label>
+                  <input 
+                    type="text" 
+                    value={editTargetSection}
+                    onChange={(e) => setEditTargetSection(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+                <button type="button" onClick={() => setEditingAssignment(null)} className="btn btn-outline">Cancel</button>
+                <button type="submit" disabled={isUpdating} className="btn btn-primary">
+                  {isUpdating ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
