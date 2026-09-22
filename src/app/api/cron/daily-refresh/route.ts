@@ -72,7 +72,8 @@ export async function GET(req: Request) {
               studentId: student.id,
               title: sub.title,
               titleSlug: sub.titleSlug,
-              timestamp: new Date(parseInt(sub.timestamp) * 1000)
+              timestamp: new Date(parseInt(sub.timestamp) * 1000),
+              difficulty: sub.difficulty
             })),
             skipDuplicates: true
           });
