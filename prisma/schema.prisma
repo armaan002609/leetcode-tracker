@@ -35,6 +35,7 @@ model Student {
   assignedUserId String?
   assignedUser   User?               @relation(fields: [assignedUserId], references: [id])
   assignments    StudentAssignment[]
+  submissions    Submission[]
 }
 
 model User {
@@ -74,4 +75,17 @@ model StudentAssignment {
   completedAt DateTime?
 
   @@unique([studentId, assignmentId])
+}
+
+model Submission {
+  id        String   @id @default(uuid())
+  title     String
+  titleSlug String
+  timestamp DateTime
+  
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // Prevent storing duplicate submissions for the same student
+  @@unique([studentId, titleSlug, timestamp])
 }

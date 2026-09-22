@@ -51,7 +51,6 @@ export async function GET(req: Request) {
         }
       });
 
-      // Check Assignments
       const pendingAssignments = await prisma.studentAssignment.findMany({
         where: {
           studentId: student.id,
@@ -62,20 +61,36 @@ export async function GET(req: Request) {
         }
       });
 
-      if (pendingAssignments.length > 0) {
-        // Fetch recent submissions
+      if (username) {
+        // Always fetch and save recent submissions for the dashboard UI
         const recentSubmissions = await fetchRecentAcSubmissions(username, 50);
         
-        for (const pa of pendingAssignments) {
-          const match = recentSubmissions.find((sub: any) => sub.titleSlug === pa.assignment.titleSlug);
-          if (match) {
-            await prisma.studentAssignment.update({
-              where: { id: pa.id },
-              data: {
-                status: 'completed',
-                completedAt: new Date(parseInt(match.timestamp) * 1000)
+        if (recentSubmissions && recentSubmissions.length > 0) {
+          // Save to DB (ignoring duplicates)
+          await prisma.submission.createMany({
+            data: recentSubmissions.map((sub: any) => ({
+              studentId: student.id,
+              title: sub.title,
+              titleSlug: sub.titleSlug,
+              timestamp: new Date(parseInt(sub.timestamp) * 1000)
+            })),
+            skipDuplicates: true
+          });
+
+          // Evaluate assignments
+          if (pendingAssignments.length > 0) {
+            for (const pa of pendingAssignments) {
+              const match = recentSubmissions.find((sub: any) => sub.titleSlug === pa.assignment.titleSlug);
+              if (match) {
+                await prisma.studentAssignment.update({
+                  where: { id: pa.id },
+                  data: {
+                    status: 'completed',
+                    completedAt: new Date(parseInt(match.timestamp) * 1000)
+                  }
+                });
               }
-            });
+            }
           }
         }
       }
