@@ -14,11 +14,14 @@ export async function GET(req: Request) {
       select: { branch: true },
       distinct: ['branch'],
       where: {
-        branch: { not: null, not: '' }
+        branch: { not: null }
       }
     });
 
-    const branchList = branches.map(b => b.branch).sort();
+    const branchList = branches
+      .map(b => b.branch)
+      .filter(b => b && b.trim() !== '')
+      .sort();
 
     return NextResponse.json(branchList);
   } catch (error: any) {
