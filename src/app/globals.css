@@ -620,15 +620,21 @@ button {
   
   .quick-stats-bar {
     margin: 48px 0 0 0 !important;
-    gap: 12px !important;
-    flex-wrap: wrap;
+    gap: 8px !important;
+    flex-wrap: nowrap;
     width: 100%;
-    justify-content: center;
+    justify-content: space-between;
   }
 
   .quick-stat {
-    flex: 1 1 45%;
-    min-width: 140px;
+    flex: 1;
+    min-width: 0;
+    align-items: center;
+    text-align: center;
+  }
+
+  .metrics-grid {
+    margin-top: 32px;
   }
 
   .table-actions {
