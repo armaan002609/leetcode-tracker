@@ -69,15 +69,28 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
     const { id } = await params;
     const body = await req.json();
-    const { title, targetBranch, targetSection } = body;
+    const { url, title, targetBranch, targetSection } = body;
+
+    let titleSlug = undefined;
+    if (url) {
+      const match = url.match(/problems\/([a-zA-Z0-9-]+)/);
+      if (match) {
+        titleSlug = match[1];
+      }
+    }
+
+    const updateData: any = {
+      title,
+      targetBranch: targetBranch || null,
+      targetSection: targetSection || null,
+    };
+    if (titleSlug) {
+      updateData.titleSlug = titleSlug;
+    }
 
     const assignment = await prisma.assignment.update({
       where: { id },
-      data: {
-        title,
-        targetBranch: targetBranch || null,
-        targetSection: targetSection || null,
-      }
+      data: updateData
     });
 
     const filter: any = {};
@@ -87,10 +100,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const students = await prisma.student.findMany({ where: filter });
     const studentIds = students.map(s => s.id);
 
+    // Delete ALL existing student assignments so we can freshly re-evaluate 
+    // them against the potentially new titleSlug or new target group.
     await prisma.studentAssignment.deleteMany({
       where: {
-        assignmentId: id,
-        studentId: { notIn: studentIds.length > 0 ? studentIds : ['dummy'] } // if no students, delete all
+        assignmentId: id
       }
     });
 
@@ -120,8 +134,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       });
 
       await prisma.studentAssignment.createMany({
-        data: studentAssignmentsData,
-        skipDuplicates: true,
+        data: studentAssignmentsData
       });
     }
 
