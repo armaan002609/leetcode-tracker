@@ -42,6 +42,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     
     const rows = sortedAssignments.map(sa => {
       const s = sa.student;
+      const formatDate = (date: Date) => {
+        return new Intl.DateTimeFormat('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        }).format(date);
+      };
+
       return [
         s.rollNumber,
         s.name,
@@ -52,7 +65,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         s.url,
         assignment.title || assignment.titleSlug,
         sa.status,
-        sa.completedAt ? new Date(sa.completedAt).toLocaleString() : '',
+        sa.completedAt ? formatDate(new Date(sa.completedAt)) : '',
         s.totalSolved?.toString() || '0',
         s.easySolved?.toString() || '0',
         s.mediumSolved?.toString() || '0',
@@ -60,7 +73,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         s.solvedToday?.toString() || '0',
         s.globalRank?.toString() || '0',
         s.badges?.toString() || '0',
-        s.lastScrapedAt ? new Date(s.lastScrapedAt).toLocaleString() : ''
+        s.lastScrapedAt ? formatDate(new Date(s.lastScrapedAt)) : ''
       ];
     });
 
