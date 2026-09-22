@@ -24,6 +24,7 @@ export default function AssignmentsPage() {
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   const [editingAssignment, setEditingAssignment] = useState<any>(null);
+  const [editUrl, setEditUrl] = useState("");
   const [editTitle, setEditTitle] = useState("");
   const [editTargetBranch, setEditTargetBranch] = useState("");
   const [editTargetSection, setEditTargetSection] = useState("");
@@ -92,6 +93,7 @@ export default function AssignmentsPage() {
 
   const openEditModal = (assignment: any) => {
     setEditingAssignment(assignment);
+    setEditUrl(`https://leetcode.com/problems/${assignment.titleSlug}/`);
     setEditTitle(assignment.title || "");
     setEditTargetBranch(assignment.targetBranch || "");
     setEditTargetSection(assignment.targetSection || "");
@@ -105,6 +107,7 @@ export default function AssignmentsPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          url: editUrl,
           title: editTitle,
           targetBranch: editTargetBranch,
           targetSection: editTargetSection
@@ -392,6 +395,16 @@ export default function AssignmentsPage() {
               <button onClick={() => setEditingAssignment(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}><X size={20}/></button>
             </div>
             <form onSubmit={handleUpdateAssignment} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>LeetCode URL</label>
+                <input 
+                  type="url" 
+                  value={editUrl}
+                  onChange={(e) => setEditUrl(e.target.value)}
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                  required
+                />
+              </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Title</label>
                 <input 
