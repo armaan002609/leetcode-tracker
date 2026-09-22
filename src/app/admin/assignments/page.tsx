@@ -239,7 +239,7 @@ export default function AssignmentsPage() {
         <div style={{ padding: '24px' }}>
           <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
             
-            <div style={{ flex: '1 1 600px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ flex: '1 1 600px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
             {/* Create Assignment Form */}
             <div className="dashboard-card" style={{ margin: 0, width: '100%' }}>
@@ -436,7 +436,7 @@ export default function AssignmentsPage() {
             </div>
 
             {/* Right Column: Student Lookup */}
-            <div style={{ flex: '1 1 100%', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ flex: '1 1 100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div className="dashboard-card" style={{ margin: 0 }}>
                 <div className="card-header">
                   <h3 className="card-title">Student Lookup</h3>
