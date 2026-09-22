@@ -52,7 +52,7 @@ export default function Dashboard() {
   const [selectedUserIdToAssign, setSelectedUserIdToAssign] = useState("");
 
   // Change Password states
-  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -383,80 +383,83 @@ export default function Dashboard() {
     <>
       <div className="dashboard-layout animate-fade-in">
         <nav className="topnav">
-        <div className="topnav-brand">
-          <button className="icon-btn" style={{background: 'transparent'}}><Menu size={20} /></button>
-          <div className="topnav-brand-icon">L</div>
-          <span>LeetCode Tracker</span>
-        </div>
-        <div className="topnav-actions" style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-          <div className="search-wrapper" style={{position: 'relative', width: '100%', maxWidth: '250px'}}>
-            <Search size={16} className="text-muted" style={{position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)'}} />
-            <input 
-              type="text" 
-              placeholder="Search name/roll..." 
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              style={{padding: '8px 12px 8px 32px', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', width: '100%', color: 'var(--foreground)', background: 'white'}}
-            />
+          <div className="topnav-brand">
+            <div className="topnav-brand-icon">L</div>
+            <span>LeetCode Tracker</span>
           </div>
-          {isAdmin && (
-            <div style={{display: 'flex', gap: '8px'}}>
-              <Link href="/admin/data" className="btn hide-text-on-mobile" title="Full Data Explorer" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>
-                <Database size={16} /> <span>Full Data</span>
-              </Link>
-              <Link href="/admin/assignments" className="btn hide-text-on-mobile" title="Manage Assignments" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>
-                <Target size={16} /> <span>Assignments</span>
-              </Link>
-              <Link href="/upload" className="btn hide-text-on-mobile" title="Upload Roster" style={{ background: 'white', color: 'var(--primary)' }}>
-                <UploadCloud size={16} /> <span>Upload Data</span>
-              </Link>
-            </div>
-          )}
-          <div style={{ position: 'relative' }}>
-            <div 
-              onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-              style={{width: 36, height: 36, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', transform: isUserDropdownOpen ? 'scale(0.95)' : 'scale(1)'}}
-              title="User Menu"
-            >
-              <User size={18} color="var(--primary)" />
+          <div className="topnav-actions" style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+            <div className="search-wrapper" style={{position: 'relative', width: '100%', maxWidth: '250px'}}>
+              <Search size={16} className="text-muted" style={{position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)'}} />
+              <input 
+                type="text" 
+                placeholder="Search name/roll..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                style={{padding: '8px 12px 8px 32px', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', width: '100%', color: 'var(--foreground)', background: 'white'}}
+              />
             </div>
             
-            {isUserDropdownOpen && (
-              <>
-                <div 
-                  style={{ position: 'fixed', inset: 0, zIndex: 40 }} 
-                  onClick={() => setIsUserDropdownOpen(false)} 
-                />
-                <div 
-                  className="animate-slide-up"
-                  style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: 'white', border: '1px solid var(--surface-border)', borderRadius: '8px', boxShadow: 'var(--shadow-md)', minWidth: '220px', zIndex: 50, padding: '8px 0', display: 'flex', flexDirection: 'column', color: 'var(--foreground)' }}
-                >
-                  <div style={{ padding: '8px 16px 12px', borderBottom: '1px solid var(--surface-border)', marginBottom: '4px' }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{session?.user?.name || "User"}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--muted)', textTransform: 'capitalize' }}>{(session?.user as any)?.role || "User"}</div>
+            <div style={{ position: 'relative' }}>
+              <div 
+                onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
+                style={{width: 36, height: 36, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', transform: isNavMenuOpen ? 'scale(0.95)' : 'scale(1)'}}
+                title="Menu"
+              >
+                <Menu size={20} color="var(--primary)" />
+              </div>
+              
+              {isNavMenuOpen && (
+                <>
+                  <div 
+                    style={{ position: 'fixed', inset: 0, zIndex: 40 }} 
+                    onClick={() => setIsNavMenuOpen(false)} 
+                  />
+                  <div 
+                    className="animate-slide-up"
+                    style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: 'white', border: '1px solid var(--surface-border)', borderRadius: '8px', boxShadow: 'var(--shadow-md)', minWidth: '220px', zIndex: 50, padding: '8px 0', display: 'flex', flexDirection: 'column', color: 'var(--foreground)' }}
+                  >
+                    <div style={{ padding: '8px 16px 12px', borderBottom: '1px solid var(--surface-border)', marginBottom: '4px' }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{session?.user?.name || "User"}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--muted)', textTransform: 'capitalize' }}>{(session?.user as any)?.role || "User"}</div>
+                    </div>
+
+                    {isAdmin && (
+                      <>
+                        <Link href="/admin/data" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <Database size={16} /> Full Data
+                        </Link>
+                        <Link href="/admin/assignments" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <Target size={16} /> Assignments
+                        </Link>
+                        <Link href="/upload" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <UploadCloud size={16} /> Upload Data
+                        </Link>
+                        <div style={{ height: '1px', background: 'var(--surface-border)', margin: '4px 0' }}></div>
+                      </>
+                    )}
+
+                    <button 
+                      onClick={() => { setIsNavMenuOpen(false); setIsPasswordModalOpen(true); }}
+                      style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', color: 'var(--foreground)' }}
+                      onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <Lock size={16} /> Change Password
+                    </button>
+                    <button 
+                      onClick={() => signOut()}
+                      style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', color: 'var(--danger)' }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#fef2f2'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <LogOut size={16} /> Sign Out
+                    </button>
                   </div>
-                  <button 
-                    onClick={() => { setIsUserDropdownOpen(false); setIsPasswordModalOpen(true); }}
-                    style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', color: 'var(--foreground)' }}
-                    onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                    onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <Lock size={16} /> Change Password
-                  </button>
-                  <button 
-                    onClick={() => signOut()}
-                    style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', color: 'var(--danger)' }}
-                    onMouseOver={(e) => e.currentTarget.style.background = '#fef2f2'}
-                    onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <LogOut size={16} /> Sign Out
-                  </button>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
       <main className="main-content">
         <div className="curved-banner-container">
