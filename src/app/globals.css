@@ -2,13 +2,13 @@
   --background: #f4f7f6;
   --foreground: #333333;
   
-  --primary: #990000; /* Crimson Red matching the screenshot */
-  --primary-hover: #7a0000;
+  --primary: #b71c1c; /* Deeper Crimson Red matching the screenshot */
+  --primary-hover: #9b1717;
   --primary-foreground: #ffffff;
   
   --surface: #ffffff;
   --surface-hover: #f9fafb;
-  --surface-border: #e2e8f0;
+  --surface-border: #eef2f6;
   
   --danger: #ef4444;
   --danger-foreground: #ffffff;
@@ -22,9 +22,9 @@
   --radius-lg: 16px;
   --radius-xl: 32px;
   
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.04);
 }
 
 * {
@@ -64,12 +64,13 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--surface);
+  background: var(--primary);
+  color: white;
   padding: 0 24px;
   height: 64px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   position: relative;
-  z-index: 10;
+  z-index: 20;
 }
 
 .topnav-brand {
@@ -81,8 +82,8 @@ button {
 }
 
 .topnav-brand-icon {
-  background: var(--primary);
-  color: white;
+  background: white;
+  color: var(--primary);
   width: 32px;
   height: 32px;
   border-radius: 4px;
@@ -140,7 +141,7 @@ button {
   top: 0;
   left: 0;
   width: 100%;
-  height: 180px;
+  height: 300px;
   overflow: hidden;
   z-index: 0;
   pointer-events: none;
@@ -148,14 +149,13 @@ button {
 
 .curved-banner {
   position: absolute;
-  top: -100px;
-  left: -5%;
-  width: 40%;
-  min-width: 400px;
-  height: 280px;
+  top: 0;
+  left: 0;
+  width: 35%;
+  min-width: 450px;
+  height: 240px;
   background: var(--primary);
-  border-bottom-right-radius: 60% 100%;
-  border-bottom-left-radius: 20% 50%;
+  border-bottom-right-radius: 200px 180px;
 }
 
 /* User Profile Banner Block */
@@ -225,17 +225,18 @@ button {
 /* Dashboard Cards (4 main metrics) */
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 24px;
+  margin-top: -16px;
   margin-bottom: 32px;
   position: relative;
-  z-index: 1;
+  z-index: 10;
 }
 
 .metric-card {
   background: var(--surface);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 32px 24px 24px 24px;
   box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
@@ -247,11 +248,11 @@ button {
 .metric-icon-wrapper {
   position: absolute;
   top: -24px;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   background: white;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -261,8 +262,8 @@ button {
 
 .metric-title {
   font-weight: 600;
-  font-size: 1.1rem;
-  margin-top: 16px;
+  font-size: 1.05rem;
+  margin-top: 12px;
   margin-bottom: 24px;
   color: var(--foreground);
 }

@@ -388,18 +388,18 @@ export default function Dashboard() {
               placeholder="Search name/roll..." 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              style={{padding: '8px 12px 8px 32px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', width: '100%'}}
+              style={{padding: '8px 12px 8px 32px', border: 'none', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', width: '100%', color: 'var(--foreground)', background: 'white'}}
             />
           </div>
           {isAdmin && (
             <div style={{display: 'flex', gap: '8px'}}>
-              <Link href="/admin/data" className="btn btn-primary" title="Full Data Explorer">
+              <Link href="/admin/data" className="btn" title="Full Data Explorer" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>
                 <Database size={16} /> Full Data
               </Link>
-              <Link href="/admin/assignments" className="btn btn-primary" title="Manage Assignments">
+              <Link href="/admin/assignments" className="btn" title="Manage Assignments" style={{ background: 'rgba(255,255,255,0.15)', color: 'white' }}>
                 <Target size={16} /> Assignments
               </Link>
-              <Link href="/upload" className="btn btn-primary" title="Upload Roster">
+              <Link href="/upload" className="btn" title="Upload Roster" style={{ background: 'white', color: 'var(--primary)' }}>
                 <UploadCloud size={16} /> Upload Data
               </Link>
             </div>
@@ -407,10 +407,10 @@ export default function Dashboard() {
           <div style={{ position: 'relative' }}>
             <div 
               onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-              style={{width: 36, height: 36, borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', transform: isUserDropdownOpen ? 'scale(0.95)' : 'scale(1)'}}
+              style={{width: 36, height: 36, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', transform: isUserDropdownOpen ? 'scale(0.95)' : 'scale(1)'}}
               title="User Menu"
             >
-              <User size={18} color="#64748b" />
+              <User size={18} color="var(--primary)" />
             </div>
             
             {isUserDropdownOpen && (
@@ -421,7 +421,7 @@ export default function Dashboard() {
                 />
                 <div 
                   className="animate-slide-up"
-                  style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: 'white', border: '1px solid var(--surface-border)', borderRadius: '8px', boxShadow: 'var(--shadow-md)', minWidth: '220px', zIndex: 50, padding: '8px 0', display: 'flex', flexDirection: 'column' }}
+                  style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: 'white', border: '1px solid var(--surface-border)', borderRadius: '8px', boxShadow: 'var(--shadow-md)', minWidth: '220px', zIndex: 50, padding: '8px 0', display: 'flex', flexDirection: 'column', color: 'var(--foreground)' }}
                 >
                   <div style={{ padding: '8px 16px 12px', borderBottom: '1px solid var(--surface-border)', marginBottom: '4px' }}>
                     <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{session?.user?.name || "User"}</div>
@@ -470,14 +470,18 @@ export default function Dashboard() {
             </div>
           </div>
           
-          <div className="quick-stats-bar" style={{display: 'flex', gap: '48px', marginLeft: 'auto', background: 'transparent'}}>
+          <div className="quick-stats-bar" style={{display: 'flex', gap: '48px', marginLeft: 'auto', marginRight: '48px', background: 'transparent'}}>
             <div className="quick-stat">
-              <span className="quick-stat-label text-white opacity-80" style={{color: 'white', opacity: 0.8}}>Processed</span>
-              <span className="quick-stat-value text-white">{processedCount} <span style={{opacity: 0.7, fontSize: '0.85em'}}>/ {rows.length}</span></span>
+              <span className="quick-stat-label">Processed</span>
+              <span className="quick-stat-value" style={{color: 'var(--foreground)'}}>{processedCount} <span style={{opacity: 0.7, fontSize: '0.85em', color: 'var(--muted)'}}>/ {rows.length}</span></span>
             </div>
             <div className="quick-stat">
-              <span className="quick-stat-label text-white opacity-80" style={{color: 'white', opacity: 0.8}}>Success Rate</span>
-              <span className="quick-stat-value text-white">{rows.length > 0 ? Math.round((successCount / rows.length) * 100) : 0}%</span>
+              <span className="quick-stat-label">Success Rate</span>
+              <span className="quick-stat-value" style={{color: 'var(--foreground)'}}>{rows.length > 0 ? Math.round((successCount / rows.length) * 100) : 0}%</span>
+            </div>
+            <div className="quick-stat">
+              <span className="quick-stat-label">Rate Limited</span>
+              <span className="quick-stat-value text-warning" style={{color: 'var(--warning)'}}>{rateLimitCount}</span>
             </div>
           </div>
         </div>
