@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 
 async function backfill() {
   console.log('Fetching difficulty map...');
-  const res = await fetch('https://leetcode.com/api/problems/algorithms/');
+  const res = await fetch('https://leetcode.com/api/problems/all/');
   const data = await res.json();
   const map = {};
   for (const item of data.stat_status_pairs) {
@@ -12,22 +12,19 @@ async function backfill() {
     map[slug] = level === 1 ? 'Easy' : level === 2 ? 'Medium' : 'Hard';
   }
   
-  console.log('Fetching submissions with missing difficulty...');
-  const submissions = await prisma.submission.findMany({
-    where: { difficulty: null }
-  });
-  
-  console.log(`Found ${submissions.length} submissions to update.`);
-  let updated = 0;
-  for (const sub of submissions) {
-    const diff = map[sub.titleSlug] || 'Unknown';
-    await prisma.submission.update({
-      where: { id: sub.id },
-      data: { difficulty: diff }
+  console.log('Updating submissions in batches by titleSlug...');
+  let updatedGroups = 0;
+  for (const slug of Object.keys(map)) {
+    const res = await prisma.submission.updateMany({
+      where: { titleSlug: slug, difficulty: 'Unknown' },
+      data: { difficulty: map[slug] }
     });
-    updated++;
+    if (res.count > 0) {
+      updatedGroups++;
+    }
   }
-  console.log(`Updated ${updated} submissions.`);
+
+  console.log(`Updated ${updatedGroups} problem groups that were Unknown.`);
 }
 
 backfill().catch(console.error).finally(() => prisma.$disconnect());
