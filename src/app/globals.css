@@ -2,8 +2,8 @@
   --background: #f4f7f6;
   --foreground: #333333;
   
-  --primary: #b71c1c; /* Deeper Crimson Red matching the screenshot */
-  --primary-hover: #9b1717;
+  --primary: #a40e19; /* Requested exact red color */
+  --primary-hover: #8f0c16;
   --primary-foreground: #ffffff;
   
   --surface: #ffffff;
