@@ -181,7 +181,7 @@ async function getDifficultyMap() {
     return difficultyCache;
   }
   try {
-    const res = await fetch('https://leetcode.com/api/problems/algorithms/');
+    const res = await fetch('https://leetcode.com/api/problems/all/');
     const data = await res.json();
     const map: Record<string, string> = {};
     if (data && data.stat_status_pairs) {
