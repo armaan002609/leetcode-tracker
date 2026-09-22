@@ -21,8 +21,7 @@ export async function GET(req: Request) {
       where: { rollNumber },
       include: {
         submissions: {
-          orderBy: { timestamp: 'desc' },
-          take: 50, // Get top 50 recent submissions
+          orderBy: { timestamp: 'desc' }
         },
       }
     });

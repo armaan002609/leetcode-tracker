@@ -458,7 +458,12 @@ export default function AssignmentsPage() {
                         </div>
                       </div>
 
-                      <h4 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '0.95rem' }}>Recent Submissions</h4>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', marginBottom: '12px' }}>
+                        <h4 style={{ margin: 0, fontSize: '0.95rem' }}>All Submissions</h4>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)', background: '#f8fafc', padding: '2px 8px', borderRadius: '12px', border: '1px solid var(--primary)' }}>
+                          Total: {lookupStudent.submissions?.length || 0}
+                        </span>
+                      </div>
                       {lookupStudent.submissions && lookupStudent.submissions.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '500px', overflowY: 'auto', paddingRight: '8px' }}>
                           {lookupStudent.submissions.map((sub: any) => (
@@ -473,7 +478,12 @@ export default function AssignmentsPage() {
                                 }}>
                                   {sub.difficulty || 'Unknown'}
                                 </span>
-                                <span>{new Date(sub.timestamp).toLocaleDateString()}</span>
+                                <span>{new Intl.DateTimeFormat('en-IN', {
+                                  timeZone: 'Asia/Kolkata',
+                                  day: '2-digit', month: '2-digit', year: 'numeric',
+                                  hour: '2-digit', minute: '2-digit', second: '2-digit',
+                                  hour12: true
+                                }).format(new Date(sub.timestamp))}</span>
                               </div>
                             </div>
                           ))}
