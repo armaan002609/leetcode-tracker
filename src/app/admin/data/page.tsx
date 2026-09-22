@@ -88,9 +88,9 @@ export default function DataExplorer() {
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      <nav className="navbar" style={{ padding: '16px 24px', borderBottom: '1px solid var(--surface-border)' }}>
+      <nav className="topnav">
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <Link href="/admin/assignments" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--muted)', textDecoration: 'none', fontWeight: 500 }}>
+          <Link href="/admin/assignments" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'white', textDecoration: 'none', fontWeight: 500 }}>
             <ChevronLeft size={20} /> Back to Dashboard
           </Link>
         </div>
