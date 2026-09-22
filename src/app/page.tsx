@@ -392,9 +392,14 @@ export default function Dashboard() {
             />
           </div>
           {isAdmin && (
-            <Link href="/upload" className="btn btn-primary" title="Upload Roster">
-              <UploadCloud size={16} /> Upload Data
-            </Link>
+            <div style={{display: 'flex', gap: '8px'}}>
+              <Link href="/admin/assignments" className="btn btn-primary" title="Manage Assignments" style={{background: '#6366f1', borderColor: '#6366f1'}}>
+                <Target size={16} /> Assignments
+              </Link>
+              <Link href="/upload" className="btn btn-primary" title="Upload Roster">
+                <UploadCloud size={16} /> Upload Data
+              </Link>
+            </div>
           )}
           <div style={{ position: 'relative' }}>
             <div 
