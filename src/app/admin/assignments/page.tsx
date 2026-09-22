@@ -32,6 +32,31 @@ export default function AssignmentsPage() {
 
   const [availableBranches, setAvailableBranches] = useState<string[]>([]);
 
+  const [lookupRollNumber, setLookupRollNumber] = useState("");
+  const [lookupStudent, setLookupStudent] = useState<any>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState("");
+
+  const handleLookupStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lookupRollNumber) return;
+    setLookupLoading(true);
+    setLookupError("");
+    setLookupStudent(null);
+    try {
+      const res = await fetch(`/api/admin/student-lookup?rollNumber=${encodeURIComponent(lookupRollNumber)}`);
+      if (res.ok) {
+        setLookupStudent(await res.json());
+      } else {
+        setLookupError("Student not found");
+      }
+    } catch (e) {
+      setLookupError("Error fetching student");
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -207,10 +232,12 @@ export default function AssignmentsPage() {
         </div>
 
         <div style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            
+            <div style={{ flex: '1 1 600px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
             {/* Create Assignment Form */}
-            <div className="dashboard-card" style={{ margin: 0, alignSelf: 'start', width: '100%', maxWidth: '600px' }}>
+            <div className="dashboard-card" style={{ margin: 0, width: '100%' }}>
               <div className="card-header">
                 <h3 className="card-title">Assign Question</h3>
               </div>
@@ -393,6 +420,71 @@ export default function AssignmentsPage() {
                   </tbody>
                 </table>
               )}
+            </div>
+            
+            </div>
+
+            {/* Right Column: Student Lookup */}
+            <div style={{ flex: '0 0 400px', width: '100%', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div className="dashboard-card" style={{ margin: 0 }}>
+                <div className="card-header">
+                  <h3 className="card-title">Student Lookup</h3>
+                </div>
+                <div style={{ padding: '24px' }}>
+                  <form onSubmit={handleLookupStudent} style={{ display: 'flex', gap: '12px' }}>
+                    <input 
+                      type="text"
+                      placeholder="Enter Roll Number..."
+                      value={lookupRollNumber}
+                      onChange={e => setLookupRollNumber(e.target.value)}
+                      style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                      required
+                    />
+                    <button type="submit" disabled={lookupLoading} className="btn btn-primary" style={{ padding: '10px 16px' }}>
+                      {lookupLoading ? 'Searching...' : 'Search'}
+                    </button>
+                  </form>
+
+                  {lookupError && (
+                    <div style={{ marginTop: '16px', color: 'var(--destructive)', fontSize: '0.9rem' }}>{lookupError}</div>
+                  )}
+
+                  {lookupStudent && (
+                    <div style={{ marginTop: '24px' }}>
+                      <div style={{ padding: '16px', background: 'var(--surface)', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                        <h4 style={{ margin: '0 0 4px 0', fontSize: '1rem' }}>{lookupStudent.name}</h4>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
+                          Roll: {lookupStudent.rollNumber} • {lookupStudent.branch || 'No Branch'} {lookupStudent.section ? `(${lookupStudent.section})` : ''}
+                        </div>
+                      </div>
+
+                      <h4 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '0.95rem' }}>Recent Submissions</h4>
+                      {lookupStudent.submissions && lookupStudent.submissions.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '500px', overflowY: 'auto', paddingRight: '8px' }}>
+                          {lookupStudent.submissions.map((sub: any) => (
+                            <div key={sub.id} style={{ padding: '12px', border: '1px solid var(--surface-border)', borderRadius: '8px', background: 'var(--background)' }}>
+                              <a href={`https://leetcode.com/problems/${sub.titleSlug}/`} target="_blank" rel="noreferrer" style={{ fontWeight: 500, color: 'var(--primary)', textDecoration: 'none', display: 'block', marginBottom: '4px' }}>
+                                {sub.title}
+                              </a>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--muted)' }}>
+                                <span style={{ 
+                                  color: sub.difficulty === 'Easy' ? 'var(--success)' : sub.difficulty === 'Medium' ? 'var(--warning)' : sub.difficulty === 'Hard' ? 'var(--destructive)' : 'var(--muted)',
+                                  fontWeight: 600 
+                                }}>
+                                  {sub.difficulty || 'Unknown'}
+                                </span>
+                                <span>{new Date(sub.timestamp).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>No recent submissions found.</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
           </div>
