@@ -159,16 +159,16 @@ export default function DataExplorer() {
             {error && <div style={{ padding: '24px', color: 'var(--destructive)' }}>{error}</div>}
 
             <div className="table-responsive" style={{ maxHeight: 'calc(100vh - 400px)', overflowY: 'auto' }}>
-              <table className="table" style={{ borderBottom: 'none' }}>
+              <table className="table" style={{ borderBottom: 'none', width: '100%', tableLayout: 'auto' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--surface)' }}>
                   <tr>
-                    <th style={{ width: '40px' }}></th>
-                    <th>Roll No</th>
-                    <th>Name</th>
-                    <th>Branch / Sec</th>
-                    <th>LeetCode ID</th>
-                    <th>Total Solved</th>
-                    <th>Difficulty</th>
+                    <th style={{ width: '40px', padding: '16px 8px' }}></th>
+                    <th style={{ padding: '16px', minWidth: '100px' }}>Roll No</th>
+                    <th style={{ padding: '16px', minWidth: '200px' }}>Name</th>
+                    <th style={{ padding: '16px', minWidth: '150px' }}>Branch / Sec</th>
+                    <th style={{ padding: '16px', minWidth: '150px' }}>LeetCode ID</th>
+                    <th style={{ padding: '16px', minWidth: '120px' }}>Total Solved</th>
+                    <th style={{ padding: '16px', minWidth: '150px' }}>Difficulty</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -178,20 +178,20 @@ export default function DataExplorer() {
                         style={{ cursor: 'pointer', background: expandedRows[student.id] ? 'var(--background)' : 'transparent' }}
                         onClick={() => toggleRow(student.id)}
                       >
-                        <td style={{ textAlign: 'center', color: 'var(--muted)' }}>
+                        <td style={{ textAlign: 'center', color: 'var(--muted)', padding: '16px 8px' }}>
                           {expandedRows[student.id] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                         </td>
-                        <td style={{ fontWeight: 600 }}>{student.rollNumber}</td>
-                        <td style={{ fontWeight: 600, color: 'var(--primary)' }}>{student.name}</td>
-                        <td>{student.branch || '-'} {student.section ? `(${student.section})` : ''}</td>
-                        <td>
+                        <td style={{ fontWeight: 600, padding: '16px' }}>{student.rollNumber}</td>
+                        <td style={{ fontWeight: 600, color: 'var(--primary)', padding: '16px' }}>{student.name}</td>
+                        <td style={{ padding: '16px' }}>{student.branch || '-'} {student.section ? `(${student.section})` : ''}</td>
+                        <td style={{ padding: '16px' }}>
                           <a href={student.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
                             {student.url.split('/').filter(Boolean).pop()}
                           </a>
                         </td>
-                        <td style={{ fontWeight: 700 }}>{student.totalSolved || 0}</td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '8px', fontSize: '0.8rem' }}>
+                        <td style={{ fontWeight: 700, padding: '16px' }}>{student.totalSolved || 0}</td>
+                        <td style={{ padding: '16px' }}>
+                          <div style={{ display: 'flex', gap: '12px', fontSize: '0.85rem' }}>
                             <span style={{ color: 'var(--success)' }}>E: {student.easySolved || 0}</span>
                             <span style={{ color: 'var(--warning)' }}>M: {student.mediumSolved || 0}</span>
                             <span style={{ color: 'var(--destructive)' }}>H: {student.hardSolved || 0}</span>
