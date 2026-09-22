@@ -185,8 +185,8 @@ export default function DataExplorer() {
                         <td style={{ fontWeight: 600, color: 'var(--primary)' }}>{student.name}</td>
                         <td>{student.branch || '-'} {student.section ? `(${student.section})` : ''}</td>
                         <td>
-                          <a href={student.leetcodeUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
-                            {student.leetcodeUrl.split('/').filter(Boolean).pop()}
+                          <a href={student.url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
+                            {student.url.split('/').filter(Boolean).pop()}
                           </a>
                         </td>
                         <td style={{ fontWeight: 700 }}>{student.totalSolved || 0}</td>
