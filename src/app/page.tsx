@@ -43,6 +43,8 @@ export default function Dashboard() {
 
   const [recentSubmissions, setRecentSubmissions] = useState<any[]>([]);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+  const [assignedQuestions, setAssignedQuestions] = useState<any[]>([]);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
 
   // Assignment states
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
@@ -337,8 +339,22 @@ export default function Dashboard() {
           setRecentSubmissions([]);
         })
         .finally(() => setIsLoadingSubmissions(false));
+        
+      setIsLoadingAssignments(true);
+      fetch(`/api/students/${selectedStudent.id}/assignments`)
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data)) setAssignedQuestions(data);
+          else setAssignedQuestions([]);
+        })
+        .catch(e => {
+          console.error(e);
+          setAssignedQuestions([]);
+        })
+        .finally(() => setIsLoadingAssignments(false));
     } else {
       setRecentSubmissions([]);
+      setAssignedQuestions([]);
     }
   }, [selectedStudent]);
 
@@ -872,6 +888,50 @@ export default function Dashboard() {
                       <div className="metric-stat-row"><span>Scrape Status</span><StatusIcon status={selectedStudent.status} /></div>
                     </div>
                   </div>
+                </div>
+
+                <div className="dashboard-card" style={{ margin: '0 0 24px 0' }}>
+                  <div className="card-header">
+                    <h3 className="card-title">Assigned Questions</h3>
+                  </div>
+                  {isLoadingAssignments ? (
+                    <div className="p-8 text-center text-muted"><RotateCw className="animate-spin" size={24} style={{margin: '0 auto'}} /></div>
+                  ) : assignedQuestions.length > 0 ? (
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th style={{padding: '12px 16px'}}>Question</th>
+                          <th style={{padding: '12px 16px'}}>Status</th>
+                          <th style={{padding: '12px 16px', textAlign: 'right'}}>Completed At</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {assignedQuestions.map((qa: any) => (
+                          <tr key={qa.id}>
+                            <td style={{padding: '12px 16px', fontWeight: 500}}>
+                              <a href={`https://leetcode.com/problems/${qa.assignment.titleSlug}/`} target="_blank" rel="noreferrer" style={{color: 'var(--primary)', textDecoration: 'none'}}>
+                                {qa.assignment.title}
+                              </a>
+                            </td>
+                            <td style={{padding: '12px 16px'}}>
+                              <span style={{
+                                padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600,
+                                color: qa.status === 'completed' ? '#10b981' : '#f59e0b',
+                                backgroundColor: qa.status === 'completed' ? '#ecfdf5' : '#fffbeb'
+                              }}>
+                                {qa.status === 'completed' ? 'Done' : 'Pending'}
+                              </span>
+                            </td>
+                            <td style={{padding: '12px 16px', textAlign: 'right', color: 'var(--text-muted)'}}>
+                              {qa.completedAt ? new Date(qa.completedAt).toLocaleString() : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="p-8 text-center text-muted">No questions assigned to this student.</div>
+                  )}
                 </div>
 
                 <div className="dashboard-card" style={{ margin: 0 }}>

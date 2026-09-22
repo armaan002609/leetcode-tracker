@@ -15,10 +15,18 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { spreadsheetId, sheetName = 'Sheet1', data } = body;
+    let { spreadsheetId, sheetName = 'Sheet1', data } = body;
 
     if (!spreadsheetId) {
       return NextResponse.json({ error: 'Spreadsheet ID is required' }, { status: 400 });
+    }
+
+    // If the user pasted the full URL instead of just the ID, extract it
+    if (spreadsheetId.includes('docs.google.com/spreadsheets/d/')) {
+      const match = spreadsheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+      if (match && match[1]) {
+        spreadsheetId = match[1];
+      }
     }
 
     if (!data || !Array.isArray(data) || data.length === 0) {
@@ -30,19 +38,39 @@ export async function POST(req: Request) {
     // Aggressive Private Key Normalization
     let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
     
-    // Remove surrounding quotes if accidentally copied
-    privateKey = privateKey.replace(/^["']|["']$/g, '');
-    
-    // Replace literal escaped newlines with actual newlines
-    privateKey = privateKey.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
-    
-    // Forcefully reconstruct the PEM format to eliminate any Vercel whitespace/newline corruption
-    const pemMatch = privateKey.match(/-----BEGIN PRIVATE KEY-----([\s\S]*?)-----END PRIVATE KEY-----/);
-    if (pemMatch) {
-      const base64Str = pemMatch[1].replace(/\s+/g, ''); // strip all whitespace from base64 payload
-      // Node.js crypto (OpenSSL 3.0+) strictly requires PEM files to be wrapped at 64 characters
-      const wrappedBase64 = base64Str.match(/.{1,64}/g)?.join('\n') || base64Str;
-      privateKey = `-----BEGIN PRIVATE KEY-----\n${wrappedBase64}\n-----END PRIVATE KEY-----\n`;
+    // If the key was provided as a JSON string or contains escaped newlines
+    if (privateKey) {
+      try {
+        // Try parsing if it was pasted as a JSON string, e.g. "{"private_key": "..."}"
+        if (privateKey.startsWith('{')) {
+          const parsed = JSON.parse(privateKey);
+          if (parsed.private_key) {
+            privateKey = parsed.private_key;
+          }
+        }
+      } catch (e) {
+        // ignore JSON parse error
+      }
+      
+      // Remove surrounding quotes if accidentally copied
+      privateKey = privateKey.replace(/^["']|["']$/g, '');
+      
+      // Replace literal escaped newlines with actual newlines
+      privateKey = privateKey.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n');
+      
+      // Forcefully reconstruct the PEM format to eliminate any Vercel whitespace/newline corruption
+      const pemMatch = privateKey.match(/-----BEGIN (?:RSA )?PRIVATE KEY-----([\s\S]*?)-----END (?:RSA )?PRIVATE KEY-----/);
+      if (pemMatch) {
+        const base64Str = pemMatch[1].replace(/\s+/g, ''); // strip all whitespace from base64 payload
+        // Node.js crypto (OpenSSL 3.0+) strictly requires PEM files to be wrapped at 64 characters
+        const wrappedBase64 = base64Str.match(/.{1,64}/g)?.join('\n') || base64Str;
+        const keyType = privateKey.includes('RSA PRIVATE KEY') ? 'RSA PRIVATE KEY' : 'PRIVATE KEY';
+        privateKey = `-----BEGIN ${keyType}-----\n${wrappedBase64}\n-----END ${keyType}-----\n`;
+      } else {
+        return NextResponse.json({ 
+          error: 'GOOGLE_PRIVATE_KEY is malformed. It must contain "-----BEGIN PRIVATE KEY-----". Please check your environment variables.' 
+        }, { status: 500 });
+      }
     }
 
     if (!clientEmail || !privateKey) {
@@ -90,8 +118,15 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error('Google Sheets Export Error:', error);
+    
+    let errorMessage = error.message || 'An error occurred while exporting to Google Sheets';
+    
+    if (errorMessage.includes('Requested entity was not found')) {
+      errorMessage = 'Spreadsheet not found. Please ensure the Spreadsheet ID is correct AND you have shared the sheet with the Service Account email as an Editor.';
+    }
+
     return NextResponse.json({ 
-      error: error.message || 'An error occurred while exporting to Google Sheets' 
+      error: errorMessage 
     }, { status: 500 });
   }
 }
