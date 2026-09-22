@@ -113,7 +113,7 @@ export default function DataExplorer() {
             </div>
           </div>
           <div style={{ paddingRight: '24px' }}>
-            <a href="/api/admin/submissions/export" download className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--foreground)', color: 'var(--background)' }}>
+            <a href="/api/admin/submissions/export" download className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Download size={18} /> Download CSV
             </a>
           </div>

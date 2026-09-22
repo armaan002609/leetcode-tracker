@@ -393,10 +393,10 @@ export default function Dashboard() {
           </div>
           {isAdmin && (
             <div style={{display: 'flex', gap: '8px'}}>
-              <Link href="/admin/data" className="btn btn-primary" title="Full Data Explorer" style={{background: '#10b981', borderColor: '#10b981'}}>
+              <Link href="/admin/data" className="btn btn-primary" title="Full Data Explorer">
                 <Database size={16} /> Full Data
               </Link>
-              <Link href="/admin/assignments" className="btn btn-primary" title="Manage Assignments" style={{background: '#6366f1', borderColor: '#6366f1'}}>
+              <Link href="/admin/assignments" className="btn btn-primary" title="Manage Assignments">
                 <Target size={16} /> Assignments
               </Link>
               <Link href="/upload" className="btn btn-primary" title="Upload Roster">
