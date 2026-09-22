@@ -173,6 +173,32 @@ export async function scrapeProfile(url: string, controller?: AbortController): 
     return { status: 'unknown_error', solved_today: null, total_solved: null, easy_solved: null, medium_solved: null, hard_solved: null, global_rank: null, badges: null };
   }
 }
+let difficultyCache: Record<string, string> | null = null;
+let lastCacheTime = 0;
+
+async function getDifficultyMap() {
+  if (difficultyCache && Date.now() - lastCacheTime < 1000 * 60 * 60 * 24) {
+    return difficultyCache;
+  }
+  try {
+    const res = await fetch('https://leetcode.com/api/problems/algorithms/');
+    const data = await res.json();
+    const map: Record<string, string> = {};
+    if (data && data.stat_status_pairs) {
+      for (const item of data.stat_status_pairs) {
+        const slug = item.stat.question__title_slug;
+        const level = item.difficulty.level;
+        map[slug] = level === 1 ? 'Easy' : level === 2 ? 'Medium' : 'Hard';
+      }
+    }
+    difficultyCache = map;
+    lastCacheTime = Date.now();
+    return map;
+  } catch (e) {
+    console.error('Failed to fetch difficulty map', e);
+    return difficultyCache || {};
+  }
+}
 
 export async function fetchRecentAcSubmissions(username: string, limit: number = 50) {
   try {
@@ -192,7 +218,18 @@ export async function fetchRecentAcSubmissions(username: string, limit: number =
     if (!response.ok) return [];
 
     const data = await response.json();
-    return data?.data?.recentAcSubmissionList || [];
+    const submissions = data?.data?.recentAcSubmissionList || [];
+    
+    // Attach difficulty
+    if (submissions.length > 0) {
+      const diffMap = await getDifficultyMap();
+      return submissions.map((s: any) => ({
+        ...s,
+        difficulty: diffMap[s.titleSlug] || 'Unknown'
+      }));
+    }
+    
+    return submissions;
   } catch (error) {
     console.error('Error fetching recent submissions for', username, error);
     return [];

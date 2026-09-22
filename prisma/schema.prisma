@@ -82,6 +82,7 @@ model Submission {
   title     String
   titleSlug String
   timestamp DateTime
+  difficulty String?
   
   studentId String
   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
