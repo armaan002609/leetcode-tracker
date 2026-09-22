@@ -565,8 +565,8 @@ button {
     transform: translateY(-50%);
     right: calc(100% + 8px);
     z-index: 50;
-    width: calc(100vw - 140px);
-    max-width: 280px;
+    width: calc(100vw - 180px);
+    max-width: 220px;
     box-shadow: var(--shadow-md);
     border-radius: var(--radius-sm);
   }
