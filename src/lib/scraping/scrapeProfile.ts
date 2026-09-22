@@ -49,6 +49,17 @@ const USER_PROFILE_QUERY = `
   }
 `;
 
+const RECENT_SUBMISSIONS_QUERY = `
+  query recentAcSubmissions($username: String!, $limit: Int!) {
+    recentAcSubmissionList(username: $username, limit: $limit) {
+      id
+      title
+      titleSlug
+      timestamp
+    }
+  }
+`;
+
 function getSolvesToday(submissionCalendarJson: string): number {
   try {
     const calendar: Record<string, number> = JSON.parse(submissionCalendarJson);
@@ -160,5 +171,30 @@ export async function scrapeProfile(url: string, controller?: AbortController): 
       return { status: 'timeout', solved_today: null, total_solved: null, easy_solved: null, medium_solved: null, hard_solved: null, global_rank: null, badges: null };
     }
     return { status: 'unknown_error', solved_today: null, total_solved: null, easy_solved: null, medium_solved: null, hard_solved: null, global_rank: null, badges: null };
+  }
+}
+
+export async function fetchRecentAcSubmissions(username: string, limit: number = 50) {
+  try {
+    const response = await fetch(LEETCODE_GRAPHQL_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      body: JSON.stringify({
+        query: RECENT_SUBMISSIONS_QUERY,
+        variables: { username, limit }
+      }),
+      cache: 'no-store'
+    });
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return data?.data?.recentAcSubmissionList || [];
+  } catch (error) {
+    console.error('Error fetching recent submissions for', username, error);
+    return [];
   }
 }
