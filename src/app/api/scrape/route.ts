@@ -58,6 +58,41 @@ export async function POST(req: Request) {
           lastScrapedAt: new Date(),
         }
       });
+
+      // Check Assignments
+      const pendingAssignments = await prisma.studentAssignment.findMany({
+        where: {
+          studentId: student.id,
+          status: 'pending'
+        },
+        include: {
+          assignment: true
+        }
+      });
+
+      if (pendingAssignments.length > 0) {
+        const { extractUsername } = await import('@/lib/scraping/urlAllowlist');
+        const { fetchRecentAcSubmissions } = await import('@/lib/scraping/scrapeProfile');
+        const username = extractUsername(student.url);
+        
+        if (username) {
+          const recentSubmissions = await fetchRecentAcSubmissions(username, 50);
+          
+          for (const pa of pendingAssignments) {
+            const match = recentSubmissions.find((sub: any) => sub.titleSlug === pa.assignment.titleSlug);
+            if (match) {
+              await prisma.studentAssignment.update({
+                where: { id: pa.id },
+                data: {
+                  status: 'completed',
+                  completedAt: new Date(parseInt(match.timestamp) * 1000)
+                }
+              });
+            }
+          }
+        }
+      }
+
       successCount++;
     }
 
