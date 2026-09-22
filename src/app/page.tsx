@@ -615,6 +615,18 @@ export default function Dashboard() {
                       >
                         Export to Google Sheets
                       </button>
+                      {isAdmin && (
+                        <a 
+                          href="/api/admin/submissions/export"
+                          download
+                          onClick={() => setIsExportMenuOpen(false)}
+                          style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--foreground)', textDecoration: 'none', display: 'block' }}
+                          onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          Export All Solved Questions
+                        </a>
+                      )}
                     </div>
                   </>
                 )}
