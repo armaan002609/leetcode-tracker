@@ -380,6 +380,7 @@ button {
   cursor: pointer;
   border: none;
   font-family: inherit;
+  white-space: nowrap;
 }
 
 .btn-primary {
@@ -529,10 +530,18 @@ button {
   flex-wrap: wrap;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 1100px) {
   .curved-banner {
     width: 60%;
     min-width: 300px;
+  }
+  
+  .topnav-brand span {
+    display: none; /* Hide 'LeetCode Tracker' text on small screens */
+  }
+
+  .hide-text-on-mobile span {
+    display: none;
   }
 }
 
@@ -545,14 +554,6 @@ button {
     padding: 12px 16px;
     flex-wrap: wrap;
     gap: 12px;
-  }
-
-  .topnav-brand span {
-    display: none; /* Hide 'LeetCode Tracker' text on small screens */
-  }
-
-  .hide-text-on-mobile span {
-    display: none;
   }
   
   .hide-on-mobile {
