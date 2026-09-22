@@ -591,7 +591,7 @@ button {
   }
   
   .curved-banner-container {
-    height: 250px;
+    height: 210px;
   }
   
   .curved-banner {
@@ -619,7 +619,7 @@ button {
   }
   
   .quick-stats-bar {
-    margin: 16px 0 0 0 !important;
+    margin: 48px 0 0 0 !important;
     gap: 12px !important;
     flex-wrap: wrap;
     width: 100%;
