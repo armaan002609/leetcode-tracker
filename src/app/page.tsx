@@ -290,6 +290,7 @@ export default function Dashboard() {
   const processedCount = rows.filter(r => r.status !== 'pending' && r.status !== 'rate_limited_retrying').length;
   const successCount = rows.filter(r => r.status === 'success' || r.status === 'partial_success').length;
   const failCount = rows.filter(r => ['timeout', 'unknown_error', 'not_found', 'invalid_url'].includes(r.status)).length;
+  const rateLimitCount = rows.filter(r => r.status === 'rate_limited_retrying').length;
 
   const uniqueBranches = useMemo(() => Array.from(new Set(rows.map(r => r.branch).filter(Boolean))).sort(), [rows]);
   const uniqueSections = useMemo(() => Array.from(new Set(rows.map(r => r.section).filter(Boolean))).sort(), [rows]);
