@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronRight, Search, Database, ChevronLeft } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, Database, ChevronLeft, Download } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DataExplorer() {
@@ -100,15 +100,22 @@ export default function DataExplorer() {
         <div className="curved-banner-container">
           <div className="curved-banner"></div>
         </div>
-        <div className="profile-banner">
-          <div className="profile-avatar">
-            <Database size={32} />
-          </div>
-          <div className="profile-info">
-            <h2>Full Data Explorer</h2>
-            <div style={{opacity: 0.9, fontSize: '0.9rem', marginTop: 4}}>
-              Browse {totalRecords} total student records and their complete submission history.
+        <div className="profile-banner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div className="profile-avatar">
+              <Database size={32} />
             </div>
+            <div className="profile-info">
+              <h2>Full Data Explorer</h2>
+              <div style={{opacity: 0.9, fontSize: '0.9rem', marginTop: 4}}>
+                Browse {totalRecords} total student records and their complete submission history.
+              </div>
+            </div>
+          </div>
+          <div style={{ paddingRight: '24px' }}>
+            <a href="/api/admin/submissions/export" download className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--foreground)', color: 'var(--background)' }}>
+              <Download size={18} /> Download CSV
+            </a>
           </div>
         </div>
 
