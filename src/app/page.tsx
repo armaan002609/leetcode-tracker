@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import DashboardCharts from "@/components/DashboardCharts";
 
 const StatusIcon = ({ status }: { status: string }) => {
   switch (status) {
@@ -566,6 +567,9 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Dashboard Charts */}
+        <DashboardCharts rows={filteredRows} />
 
         {/* Data Table Card */}
         <div className="dashboard-card">
