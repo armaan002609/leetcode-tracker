@@ -450,6 +450,47 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
 
+                <div style={{ height: '140px', marginBottom: '24px', display: 'flex', alignItems: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px solid #f1f5f9', padding: '12px' }}>
+                  <div style={{ flex: 1, height: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Easy', value: branch.easy || 0, fill: DIFF_COLORS.easy },
+                            { name: 'Medium', value: branch.medium || 0, fill: DIFF_COLORS.medium },
+                            { name: 'Hard', value: branch.hard || 0, fill: DIFF_COLORS.hard }
+                          ].filter(d => d.value > 0)}
+                          cx="50%" cy="50%" innerRadius={35} outerRadius={55} paddingAngle={2} dataKey="value" stroke="none"
+                        >
+                          {[
+                            { name: 'Easy', value: branch.easy || 0, fill: DIFF_COLORS.easy },
+                            { name: 'Medium', value: branch.medium || 0, fill: DIFF_COLORS.medium },
+                            { name: 'Hard', value: branch.hard || 0, fill: DIFF_COLORS.hard }
+                          ].filter(d => d.value > 0).map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip formatter={(value: number) => [value.toLocaleString(), 'Solved']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', fontSize: '0.75rem', padding: '4px 8px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100px', paddingLeft: '12px', borderLeft: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: DIFF_COLORS.easy }}></div>Easy</div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{branch.easy}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: DIFF_COLORS.medium }}></div>Med</div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{branch.medium}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}><div style={{ width: '8px', height: '8px', borderRadius: '50%', background: DIFF_COLORS.hard }}></div>Hard</div>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{branch.hard}</div>
+                    </div>
+                  </div>
+                </div>
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: '0.85rem', color: '#475569' }}>
                     Top: <span style={{ fontWeight: 700, color: '#0f172a' }}>{branch.topStudent?.name || 'N/A'}</span> <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>({branch.topStudent?.totalSolved || 0} solved)</span>

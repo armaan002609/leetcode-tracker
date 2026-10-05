@@ -88,13 +88,13 @@ export default function DashboardCharts({ rows }: { rows: any[] }) {
                 outerRadius={90}
                 paddingAngle={5}
                 dataKey="value"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }: { name: string, percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
               >
                 {diffData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
+                 ))}
               </Pie>
-              <RechartsTooltip formatter={(value) => [`${value} questions`, 'Solved']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
+              <RechartsTooltip formatter={(value: number) => [`${value} questions`, 'Solved']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -110,7 +110,7 @@ export default function DashboardCharts({ rows }: { rows: any[] }) {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--surface-border)" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--muted)' }} angle={-45} textAnchor="end" />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--muted)' }} />
-                <RechartsTooltip cursor={{ fill: 'var(--surface-hover)' }} formatter={(value) => [`${value} average solved`, 'Average']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
+                <RechartsTooltip cursor={{ fill: 'var(--surface-hover)' }} formatter={(value: number) => [`${value} average solved`, 'Average']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)' }} />
                 <Bar dataKey="average" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
