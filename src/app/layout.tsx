@@ -34,7 +34,7 @@ export default function RootLayout({
               color: 'var(--muted)',
               fontSize: '0.9rem'
             }}>
-              Developed by <a href="https://www.linkedin.com/in/armaan-s-paul/" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>Armaan</a>
+              Developed by <a href="https://www.linkedin.com/in/armaan-s-paul/" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>Armaan</a> AI&DS 2420673 (2024-2028)
             </footer>
           </div>
         </Providers>
