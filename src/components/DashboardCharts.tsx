@@ -5,6 +5,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
+import { Download } from 'lucide-react';
+import { downloadCsv } from '@/lib/export/generateCsv';
 
 const COLORS = ['#10b981', '#f59e0b', '#ef4444']; // green, yellow, red for Easy, Medium, Hard
 
@@ -55,12 +57,29 @@ export default function DashboardCharts({ rows }: { rows: any[] }) {
 
   if (!rows || rows.length === 0) return null;
 
+  const downloadGraphCsv = (headers: string[], data: any[], filename: string) => {
+    let csv = headers.join(',') + '\n';
+    data.forEach(item => {
+      csv += Object.values(item).join(',') + '\n';
+    });
+    downloadCsv(csv, filename);
+  };
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
       
       {/* Top 10 Students */}
       <div className="dashboard-card" style={{ padding: '24px', borderRadius: '12px', background: 'white', border: '1px solid var(--surface-border)', boxShadow: 'var(--shadow-sm)' }}>
-        <h3 style={{ marginBottom: '24px', fontSize: '1.1rem', fontWeight: 600, color: 'var(--foreground)' }}>Top 10 Students</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--foreground)' }}>Top 10 Students</h3>
+          <button 
+            onClick={() => downloadGraphCsv(['Name', 'Solved'], topUsers, 'top_10_students.csv')}
+            title="Download Data"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}
+          >
+            <Download size={18} />
+          </button>
+        </div>
         <div style={{ width: '100%', height: 250 }}>
           <ResponsiveContainer>
             <BarChart data={topUsers} margin={{ top: 5, right: 20, bottom: 40, left: 0 }}>
@@ -76,7 +95,16 @@ export default function DashboardCharts({ rows }: { rows: any[] }) {
 
       {/* Difficulty Distribution */}
       <div className="dashboard-card" style={{ padding: '24px', borderRadius: '12px', background: 'white', border: '1px solid var(--surface-border)', boxShadow: 'var(--shadow-sm)' }}>
-        <h3 style={{ marginBottom: '24px', fontSize: '1.1rem', fontWeight: 600, color: 'var(--foreground)' }}>Difficulty Distribution (Total)</h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--foreground)' }}>Difficulty Distribution (Total)</h3>
+          <button 
+            onClick={() => downloadGraphCsv(['Difficulty', 'Questions Solved'], diffData, 'difficulty_distribution.csv')}
+            title="Download Data"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}
+          >
+            <Download size={18} />
+          </button>
+        </div>
         <div style={{ width: '100%', height: 250 }}>
           <ResponsiveContainer>
             <PieChart>
@@ -103,7 +131,16 @@ export default function DashboardCharts({ rows }: { rows: any[] }) {
       {/* Average Solved by Branch */}
       {branchData.length > 0 && (
         <div className="dashboard-card" style={{ padding: '24px', borderRadius: '12px', background: 'white', border: '1px solid var(--surface-border)', boxShadow: 'var(--shadow-sm)' }}>
-          <h3 style={{ marginBottom: '24px', fontSize: '1.1rem', fontWeight: 600, color: 'var(--foreground)' }}>Avg. Solved by Branch</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: 'var(--foreground)' }}>Avg. Solved by Branch</h3>
+            <button 
+              onClick={() => downloadGraphCsv(['Branch', 'Average Solved'], branchData, 'avg_solved_by_branch.csv')}
+              title="Download Data"
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}
+            >
+              <Download size={18} />
+            </button>
+          </div>
           <div style={{ width: '100%', height: 250 }}>
             <ResponsiveContainer>
               <BarChart data={branchData} margin={{ top: 5, right: 20, bottom: 40, left: 0 }}>
