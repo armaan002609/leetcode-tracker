@@ -3,8 +3,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronRight, Search, Database, ChevronLeft, Download } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, Database, ChevronLeft, Download, CheckCircle2, Clock, Lock, HelpCircle, AlertTriangle, RotateCw, Edit2 } from 'lucide-react';
 import Link from 'next/link';
+
+const StatusIcon = ({ status }: { status: string }) => {
+  switch (status) {
+    case 'success': return <span className="status-badge success"><CheckCircle2 size={16} /> Success</span>;
+    case 'partial_success': return <span className="status-badge warning"><CheckCircle2 size={16} /> Partial</span>;
+    case 'private_profile': return <span className="status-badge pending"><Lock size={16} /> Private</span>;
+    case 'not_found': return <span className="status-badge pending"><HelpCircle size={16} /> Not Found</span>;
+    case 'rate_limited_retrying': return <span className="status-badge warning"><Clock className="animate-pulse" size={16} /> Retrying</span>;
+    case 'pending': return <span className="status-badge pending"><RotateCw size={16} /> Pending</span>;
+    default: return <span className="status-badge danger"><AlertTriangle size={16} /> Error</span>;
+  }
+};
 
 export default function DataExplorer() {
   const { data: session, status } = useSession();
@@ -202,12 +214,14 @@ export default function DataExplorer() {
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--surface)' }}>
                   <tr>
                     <th style={{ width: '40px', padding: '16px 8px' }}></th>
+                    <th style={{ padding: '16px', minWidth: '100px' }}>Status</th>
                     <th style={{ padding: '16px', minWidth: '100px' }}>Roll No</th>
                     <th style={{ padding: '16px', minWidth: '200px' }}>Name</th>
                     <th style={{ padding: '16px', minWidth: '150px' }}>Branch / Sec</th>
                     <th style={{ padding: '16px', minWidth: '150px' }}>LeetCode ID</th>
                     <th style={{ padding: '16px', minWidth: '120px' }}>Total Solved</th>
                     <th style={{ padding: '16px', minWidth: '150px' }}>Difficulty</th>
+                    <th style={{ padding: '16px', minWidth: '80px', textAlign: 'center' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -220,6 +234,7 @@ export default function DataExplorer() {
                         <td style={{ textAlign: 'center', color: 'var(--muted)', padding: '16px 8px' }}>
                           {expandedRows[student.id] ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                         </td>
+                        <td style={{ padding: '16px' }}><StatusIcon status={student.status} /></td>
                         <td style={{ fontWeight: 600, padding: '16px' }}>{student.rollNumber}</td>
                         <td style={{ fontWeight: 600, color: 'var(--primary)', padding: '16px' }}>{student.name}</td>
                         <td style={{ padding: '16px' }}>{student.branch || '-'} {student.section ? `(${student.section})` : ''}</td>
@@ -236,24 +251,26 @@ export default function DataExplorer() {
                             <span style={{ color: 'var(--destructive)' }}>H: {student.hardSolved || 0}</span>
                           </div>
                         </td>
+                        <td style={{ padding: '16px', textAlign: 'center' }}>
+                          <button 
+                            onClick={(e) => { 
+                              e.stopPropagation();
+                              setEditingStudent(student); 
+                              setEditForm({ name: student.name, rollNumber: student.rollNumber, branch: student.branch || '', semester: student.semester || '', section: student.section || '', mentor: student.mentor || '', url: student.url }); 
+                            }}
+                            className="btn btn-outline"
+                            style={{ padding: '6px 10px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                          >
+                            <Edit2 size={14} /> Edit
+                          </button>
+                        </td>
                       </tr>
                       {expandedRows[student.id] && (
                         <tr>
-                          <td colSpan={7} style={{ padding: 0, borderBottom: '1px solid var(--surface-border)' }}>
+                          <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid var(--surface-border)' }}>
                             <div style={{ padding: '24px', background: 'var(--background)', borderLeft: '4px solid var(--primary)' }}>
                               <h4 style={{ margin: '0 0 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span>Complete Submission History (DB Records: {student.submissions?.length || 0})</span>
-                                <button 
-                                  onClick={(e) => { 
-                                    e.stopPropagation();
-                                    setEditingStudent(student); 
-                                    setEditForm({ name: student.name, rollNumber: student.rollNumber, branch: student.branch || '', semester: student.semester || '', section: student.section || '', mentor: student.mentor || '', url: student.url }); 
-                                  }} 
-                                  className="btn btn-outline" 
-                                  style={{ padding: '6px 12px', fontSize: '0.85rem', color: 'var(--primary)', borderColor: 'var(--primary)' }}
-                                >
-                                  Edit Student
-                                </button>
                               </h4>
                               
                               {student.submissions && student.submissions.length > 0 ? (

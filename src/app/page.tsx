@@ -60,34 +60,6 @@ export default function Dashboard() {
   const [newPassword, setNewPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // Edit states
-  const [editingStudent, setEditingStudent] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', rollNumber: '', branch: '', semester: '', section: '', mentor: '', url: '' });
-  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
-
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmittingEdit(true);
-    try {
-      const res = await fetch(`/api/students/${editingStudent.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm)
-      });
-      if (res.ok) {
-        setEditingStudent(null);
-        fetchStudents(); // refresh data
-      } else {
-        const errorData = await res.json();
-        alert(errorData.error || 'Failed to update student');
-      }
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setIsSubmittingEdit(false);
-    }
-  };
-
   // Export states
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isGoogleSheetModalOpen, setIsGoogleSheetModalOpen] = useState(false);
@@ -807,36 +779,14 @@ export default function Dashboard() {
                       <td className="text-right">{row.globalRank?.toLocaleString() ?? '-'}</td>
                       <td className="text-right">{row.badges ?? '-'}</td>
                       <td>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <button 
-                            onClick={() => handleRefresh([row.rollNumber])}
-                            disabled={isScraping}
-                            className="text-primary font-medium hover:underline"
-                            style={{fontSize: '0.85rem', opacity: isScraping ? 0.5 : 1}}
-                          >
-                            Refresh
-                          </button>
-                          {isAdmin && (
-                            <button
-                              onClick={() => {
-                                setEditingStudent(row);
-                                setEditForm({
-                                  name: row.name,
-                                  rollNumber: row.rollNumber,
-                                  branch: row.branch || '',
-                                  semester: row.semester || '',
-                                  section: row.section || '',
-                                  mentor: row.mentor || '',
-                                  url: row.url || ''
-                                });
-                              }}
-                              className="text-primary font-medium hover:underline"
-                              style={{fontSize: '0.85rem'}}
-                            >
-                              Edit
-                            </button>
-                          )}
-                        </div>
+                        <button 
+                          onClick={() => handleRefresh([row.rollNumber])}
+                          disabled={isScraping}
+                          className="text-primary font-medium"
+                          style={{fontSize: '0.85rem', opacity: isScraping ? 0.5 : 1}}
+                        >
+                          Refresh
+                        </button>
                       </td>
                     </tr>
                   )
@@ -882,50 +832,6 @@ export default function Dashboard() {
         </div>
       </main>
     </div>
-
-    {/* Edit Modal */}
-    {editingStudent && (
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ background: 'var(--surface)', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
-          <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.2rem', fontWeight: 600 }}>Edit Student</h3>
-          <form onSubmit={handleEditSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Name *</label>
-              <input required type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Roll Number *</label>
-              <input required type="text" value={editForm.rollNumber} onChange={e => setEditForm({...editForm, rollNumber: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Branch</label>
-              <input type="text" value={editForm.branch} onChange={e => setEditForm({...editForm, branch: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Semester</label>
-              <input type="text" value={editForm.semester} onChange={e => setEditForm({...editForm, semester: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Section</label>
-              <input type="text" value={editForm.section} onChange={e => setEditForm({...editForm, section: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Mentor Name</label>
-              <input type="text" value={editForm.mentor} onChange={e => setEditForm({...editForm, mentor: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
-            </div>
-            <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>LeetCode URL *</label>
-              <input required type="url" value={editForm.url} onChange={e => setEditForm({...editForm, url: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
-            </div>
-            
-            <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--surface-border)' }}>
-              <button type="button" onClick={() => setEditingStudent(null)} className="btn">Cancel</button>
-              <button type="submit" disabled={isSubmittingEdit} className="btn btn-primary">{isSubmittingEdit ? 'Saving...' : 'Save Changes'}</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    )}
 
     {/* MODAL overlay for selected student (Moved completely outside to avoid CSS transform relative positioning issues) */}
         {selectedStudent && (
