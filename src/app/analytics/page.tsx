@@ -181,7 +181,7 @@ export default function AnalyticsPage() {
         </div>
         
         <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>
-          LeetCode Performance & Intelligence Portal
+          Leetcode Analysis
         </h1>
         <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.95rem', maxWidth: '800px', marginBottom: '24px', lineHeight: 1.5 }}>
           Comprehensive departmental & course-wise problem-solving analytics. Monitoring student participation, solution depth, and problem-solving benchmarks across all available programs.
