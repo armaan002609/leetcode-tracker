@@ -23,7 +23,21 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${poppins.variable}`}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+            <div style={{ flex: 1 }}>{children}</div>
+            <footer style={{ 
+              padding: '24px', 
+              textAlign: 'center', 
+              borderTop: '1px solid var(--surface-border)', 
+              background: 'var(--surface)', 
+              color: 'var(--muted)',
+              fontSize: '0.9rem'
+            }}>
+              Developed by <a href="https://www.linkedin.com/in/armaan-s-paul/" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>Armaan</a>
+            </footer>
+          </div>
+        </Providers>
       </body>
     </html>
   );
