@@ -10,42 +10,52 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const allAssignments = await prisma.assignment.findMany({ orderBy: { createdAt: 'asc' } });
+    
     const allStudentAssignments = await prisma.studentAssignment.findMany({
       include: {
         student: true,
         assignment: true
-      },
-      orderBy: [
-        { assignment: { createdAt: 'desc' } },
-        { student: { rollNumber: 'asc' } }
-      ]
+      }
     });
 
-    // Generate CSV matching portal arrangement
+    // Group by student
+    const studentMap = new Map();
+    for (const sa of allStudentAssignments) {
+      if (!studentMap.has(sa.student.id)) {
+        studentMap.set(sa.student.id, {
+          student: sa.student,
+          assignments: {}
+        });
+      }
+      studentMap.get(sa.student.id).assignments[sa.assignmentId] = sa;
+    }
+
+    // Sort students by roll number
+    const sortedStudents = Array.from(studentMap.values()).sort((a, b) => 
+      a.student.rollNumber.localeCompare(b.student.rollNumber)
+    );
+
     const headers = [
       'Roll Number', 'Name', 'Branch', 'Semester', 'Section', 'Mentor', 'URL',
-      'Assignment Question', 'Assignment Status', 'Completed At',
-      'Total Solved', 'Easy Solved', 'Medium Solved', 'Hard Solved', 
-      'Solved Today', 'Global Rank', 'Badges', 'Last Scraped'
+      'Total Solved', 'Easy Solved', 'Medium Solved', 'Hard Solved', 'Global Rank',
+      ...allAssignments.map(a => a.title || a.titleSlug)
     ];
     
-    const rows = allStudentAssignments.map(sa => {
-      const s = sa.student;
-      const assignment = sa.assignment;
-      const formatDate = (date: Date) => {
-        return new Intl.DateTimeFormat('en-IN', {
-          timeZone: 'Asia/Kolkata',
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: true
-        }).format(date);
-      };
+    const formatDate = (date: Date) => {
+      return new Intl.DateTimeFormat('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: true
+      }).format(date);
+    };
 
-      return [
+    const rows = sortedStudents.map(data => {
+      const s = data.student;
+      const assignmentsObj = data.assignments;
+
+      const baseRow = [
         s.rollNumber,
         s.name,
         s.branch || '',
@@ -53,18 +63,23 @@ export async function GET() {
         s.section || '',
         s.mentor || '',
         s.url,
-        assignment.title || assignment.titleSlug,
-        sa.status,
-        sa.completedAt ? formatDate(new Date(sa.completedAt)) : '',
         s.totalSolved?.toString() || '0',
         s.easySolved?.toString() || '0',
         s.mediumSolved?.toString() || '0',
         s.hardSolved?.toString() || '0',
-        s.solvedToday?.toString() || '0',
-        s.globalRank?.toString() || '0',
-        s.badges?.toString() || '0',
-        s.lastScrapedAt ? formatDate(new Date(s.lastScrapedAt)) : ''
+        s.globalRank?.toString() || '0'
       ];
+
+      const assignmentCells = allAssignments.map(a => {
+        const sa = assignmentsObj[a.id];
+        if (!sa) return 'Not Assigned';
+        if (sa.status === 'completed') {
+          return sa.completedAt ? `Completed (${formatDate(new Date(sa.completedAt))})` : 'Completed';
+        }
+        return 'Pending';
+      });
+
+      return [...baseRow, ...assignmentCells];
     });
 
     const csvContent = [
@@ -75,7 +90,7 @@ export async function GET() {
     return new NextResponse(csvContent, {
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="all_assignments_report.csv"`
+        'Content-Disposition': `attachment; filename="all_assignments_pivot_report.csv"`
       }
     });
   } catch (error: any) {
