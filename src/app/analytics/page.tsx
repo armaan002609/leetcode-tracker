@@ -205,9 +205,9 @@ export default function AnalyticsPage() {
 
   if (!isReady || status === "loading") {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f8fafc' }}>
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <p className="text-gray-500 font-medium">Loading Intelligence Portal...</p>
+      <div className="enterprise-loader-wrapper">
+        <div className="pulse-logo">L</div>
+        <div className="loader-text">Loading Analytics...</div>
       </div>
     );
   }
