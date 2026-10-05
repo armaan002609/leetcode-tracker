@@ -9,7 +9,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
-  ArrowLeft, Building2, CheckCircle2, CheckSquare, Target, Users, Zap, Layers, Trophy, BookOpen, ChevronRight, Activity, Medal, Search
+  ArrowLeft, Building2, CheckCircle2, CheckSquare, Target, Users, Zap, Layers, Trophy, BookOpen, ChevronRight, Activity, Medal, Search, ArrowUpDown
 } from "lucide-react";
 
 // Modern color palette based on reference
@@ -22,6 +22,7 @@ export default function AnalyticsPage() {
   const [isReady, setIsReady] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
   const { status } = useSession();
   const router = useRouter();
 
@@ -106,6 +107,43 @@ export default function AnalyticsPage() {
       branch: s.branch || 'Unknown'
     }));
   }, [activeStudents]);
+
+  // Sorted Students for the full leaderboard table
+  const sortedTableStudents = useMemo(() => {
+    let sortableItems = activeStudents.map((s, index) => ({ ...s, originalRank: index + 1 }));
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+        
+        if (sortConfig.key === 'originalRank') {
+           aValue = a.originalRank;
+           bValue = b.originalRank;
+        }
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'asc' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [activeStudents, sortConfig]);
+
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'desc';
+    if (key === 'name' || key === 'branch') direction = 'asc';
+    
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc';
+    } else if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
 
   // Difficulty Data
   const diffData = useMemo(() => {
@@ -438,29 +476,42 @@ export default function AnalyticsPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ background: '#f1f5f9', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <th style={{ padding: '12px 24px', fontWeight: 600 }}>Rank</th>
-                    <th style={{ padding: '12px 24px', fontWeight: 600 }}>Student Name</th>
-                    <th style={{ padding: '12px 24px', fontWeight: 600 }}>Course / Branch</th>
-                    <th style={{ padding: '12px 24px', fontWeight: 600 }}>Total Solved</th>
-                    <th style={{ padding: '12px 24px', fontWeight: 600 }}>Easy</th>
-                    <th style={{ padding: '12px 24px', fontWeight: 600 }}>Medium</th>
-                    <th style={{ padding: '12px 24px', fontWeight: 600 }}>Hard</th>
+                    {[
+                      { key: 'originalRank', label: 'Rank' },
+                      { key: 'name', label: 'Student Name' },
+                      { key: 'branch', label: 'Course / Branch' },
+                      { key: 'totalSolved', label: 'Total Solved' },
+                      { key: 'easySolved', label: 'Easy' },
+                      { key: 'mediumSolved', label: 'Medium' },
+                      { key: 'hardSolved', label: 'Hard' }
+                    ].map(({ key, label }) => (
+                      <th 
+                        key={key} 
+                        onClick={() => requestSort(key)}
+                        style={{ padding: '12px 24px', fontWeight: 600, cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {label}
+                          <ArrowUpDown size={12} color={sortConfig?.key === key ? '#a40e19' : '#cbd5e1'} />
+                        </div>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {activeStudents.map((student, i) => (
-                    <tr key={student.rollNumber || i} style={{ borderBottom: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
-                      <td style={{ padding: '12px 24px', fontWeight: i < 3 ? 700 : 500, color: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : '#64748b' }}>
-                        #{i + 1}
+                  {sortedTableStudents.map((student, i) => (
+                    <tr key={student.rollNumber || student.name || i} style={{ borderBottom: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
+                      <td style={{ padding: '12px 24px', fontWeight: student.originalRank <= 3 ? 700 : 500, color: student.originalRank === 1 ? '#f59e0b' : student.originalRank === 2 ? '#94a3b8' : student.originalRank === 3 ? '#b45309' : '#64748b' }}>
+                        #{student.originalRank}
                       </td>
                       <td style={{ padding: '12px 24px', fontWeight: 600, color: '#0f172a' }}>{student.name}</td>
                       <td style={{ padding: '12px 24px', color: '#475569' }}>
                         <span style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 500 }}>{student.branch}</span>
                       </td>
                       <td style={{ padding: '12px 24px', fontWeight: 700, color: '#0f172a' }}>{student.totalSolved}</td>
-                      <td style={{ padding: '12px 24px', color: DIFF_COLORS.easy, fontWeight: 500 }}>{student.easySolved}</td>
-                      <td style={{ padding: '12px 24px', color: DIFF_COLORS.medium, fontWeight: 500 }}>{student.mediumSolved}</td>
-                      <td style={{ padding: '12px 24px', color: DIFF_COLORS.hard, fontWeight: 500 }}>{student.hardSolved}</td>
+                      <td style={{ padding: '12px 24px', color: DIFF_COLORS.easy, fontWeight: 500 }}>{student.easySolved || 0}</td>
+                      <td style={{ padding: '12px 24px', color: DIFF_COLORS.medium, fontWeight: 500 }}>{student.mediumSolved || 0}</td>
+                      <td style={{ padding: '12px 24px', color: DIFF_COLORS.hard, fontWeight: 500 }}>{student.hardSolved || 0}</td>
                     </tr>
                   ))}
                 </tbody>
