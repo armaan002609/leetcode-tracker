@@ -23,6 +23,12 @@ export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null);
+  
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterBranch, setFilterBranch] = useState("all");
+  const [filterSemester, setFilterSemester] = useState("all");
+  const [filterSection, setFilterSection] = useState("all");
+
   const { status } = useSession();
   const router = useRouter();
 
@@ -55,6 +61,10 @@ export default function AnalyticsPage() {
   const avgActive = totalActive > 0 ? (totalSolved / totalActive).toFixed(1) : "0";
   const avgEnrolled = totalEnrolled > 0 ? (totalSolved / totalEnrolled).toFixed(1) : "0";
   const successfulScrapes = rows.filter(r => r.status === 'success' || r.status === 'partial_success').length;
+
+  const uniqueBranches = useMemo(() => Array.from(new Set(rows.map(r => r.branch).filter(Boolean))).sort(), [rows]);
+  const uniqueSections = useMemo(() => Array.from(new Set(rows.map(r => r.section).filter(Boolean))).sort(), [rows]);
+  const uniqueSemesters = useMemo(() => Array.from(new Set(rows.map(r => r.semester).filter(Boolean))).sort(), [rows]);
 
   // Branch (Course) Data
   const branchData = useMemo(() => {
@@ -110,7 +120,18 @@ export default function AnalyticsPage() {
 
   // Sorted Students for the full leaderboard table
   const sortedTableStudents = useMemo(() => {
-    let sortableItems = activeStudents.map((s, index) => ({ ...s, originalRank: index + 1 }));
+    const filtered = activeStudents.filter(r => {
+      const matchesStatus = filterStatus === 'all' || 
+                            (filterStatus === 'success' && (r.status === 'success' || r.status === 'partial_success')) ||
+                            (filterStatus === 'failed' && ['timeout', 'unknown_error', 'not_found', 'invalid_url'].includes(r.status)) ||
+                            (filterStatus === 'pending' && (r.status === 'pending' || r.status === 'rate_limited_retrying'));
+      const matchesBranch = filterBranch === 'all' || r.branch === filterBranch;
+      const matchesSection = filterSection === 'all' || r.section === filterSection;
+      const matchesSemester = filterSemester === 'all' || r.semester === filterSemester;
+      return matchesStatus && matchesBranch && matchesSection && matchesSemester;
+    });
+
+    let sortableItems = filtered.map((s, index) => ({ ...s, originalRank: index + 1 }));
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
         let aValue = a[sortConfig.key];
@@ -131,7 +152,7 @@ export default function AnalyticsPage() {
       });
     }
     return sortableItems;
-  }, [activeStudents, sortConfig]);
+  }, [activeStudents, sortConfig, filterStatus, filterBranch, filterSemester, filterSection]);
 
   const requestSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'desc';
@@ -469,8 +490,45 @@ export default function AnalyticsPage() {
 
           {/* Full Leaderboard Table */}
           <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', flexWrap: 'wrap', gap: '16px', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>All Active Students</h3>
+              
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <select 
+                  value={filterStatus}
+                  onChange={e => setFilterStatus(e.target.value)}
+                  style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.85rem', outline: 'none', background: 'white' }}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="success">Success & Partial</option>
+                  <option value="failed">Failed & Errors</option>
+                  <option value="pending">Pending</option>
+                </select>
+                <select 
+                  value={filterBranch}
+                  onChange={e => setFilterBranch(e.target.value)}
+                  style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.85rem', outline: 'none', background: 'white' }}
+                >
+                  <option value="all">All Branches</option>
+                  {uniqueBranches.map(b => <option key={b as string} value={b as string}>{b as string}</option>)}
+                </select>
+                <select 
+                  value={filterSemester}
+                  onChange={e => setFilterSemester(e.target.value)}
+                  style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.85rem', outline: 'none', background: 'white' }}
+                >
+                  <option value="all">All Semesters</option>
+                  {uniqueSemesters.map(s => <option key={s as string} value={s as string}>Sem {s as string}</option>)}
+                </select>
+                <select 
+                  value={filterSection}
+                  onChange={e => setFilterSection(e.target.value)}
+                  style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.85rem', outline: 'none', background: 'white' }}
+                >
+                  <option value="all">All Sections</option>
+                  {uniqueSections.map(s => <option key={s as string} value={s as string}>Sec {s as string}</option>)}
+                </select>
+              </div>
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
