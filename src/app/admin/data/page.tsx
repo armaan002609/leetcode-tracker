@@ -25,6 +25,33 @@ export default function DataExplorer() {
   const [availableBranches, setAvailableBranches] = useState<string[]>([]);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
+  const [editingStudent, setEditingStudent] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', rollNumber: '', branch: '', semester: '', section: '', mentor: '', url: '' });
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingEdit(true);
+    try {
+      const res = await fetch(`/api/students/${editingStudent.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      });
+      if (res.ok) {
+        setEditingStudent(null);
+        fetchData();
+      } else {
+        const errorData = await res.json();
+        alert(errorData.error || 'Failed to update student');
+      }
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -214,8 +241,19 @@ export default function DataExplorer() {
                         <tr>
                           <td colSpan={7} style={{ padding: 0, borderBottom: '1px solid var(--surface-border)' }}>
                             <div style={{ padding: '24px', background: 'var(--background)', borderLeft: '4px solid var(--primary)' }}>
-                              <h4 style={{ margin: '0 0 16px 0', display: 'flex', justifyContent: 'space-between' }}>
+                              <h4 style={{ margin: '0 0 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <span>Complete Submission History (DB Records: {student.submissions?.length || 0})</span>
+                                <button 
+                                  onClick={(e) => { 
+                                    e.stopPropagation();
+                                    setEditingStudent(student); 
+                                    setEditForm({ name: student.name, rollNumber: student.rollNumber, branch: student.branch || '', semester: student.semester || '', section: student.section || '', mentor: student.mentor || '', url: student.url }); 
+                                  }} 
+                                  className="btn btn-outline" 
+                                  style={{ padding: '6px 12px', fontSize: '0.85rem', color: 'var(--primary)', borderColor: 'var(--primary)' }}
+                                >
+                                  Edit Student
+                                </button>
                               </h4>
                               
                               {student.submissions && student.submissions.length > 0 ? (
@@ -299,6 +337,49 @@ export default function DataExplorer() {
 
           </div>
         </div>
+
+        {editingStudent && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: 'var(--surface)', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.2rem', fontWeight: 600 }}>Edit Student</h3>
+              <form onSubmit={handleEditSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Name *</label>
+                  <input required type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Roll Number *</label>
+                  <input required type="text" value={editForm.rollNumber} onChange={e => setEditForm({...editForm, rollNumber: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Branch</label>
+                  <input type="text" value={editForm.branch} onChange={e => setEditForm({...editForm, branch: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Semester</label>
+                  <input type="text" value={editForm.semester} onChange={e => setEditForm({...editForm, semester: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Section</label>
+                  <input type="text" value={editForm.section} onChange={e => setEditForm({...editForm, section: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Mentor Name</label>
+                  <input type="text" value={editForm.mentor} onChange={e => setEditForm({...editForm, mentor: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                </div>
+                <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>LeetCode URL *</label>
+                  <input required type="url" value={editForm.url} onChange={e => setEditForm({...editForm, url: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                </div>
+                
+                <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--surface-border)' }}>
+                  <button type="button" onClick={() => setEditingStudent(null)} className="btn">Cancel</button>
+                  <button type="submit" disabled={isSubmittingEdit} className="btn btn-primary">{isSubmittingEdit ? 'Saving...' : 'Save Changes'}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

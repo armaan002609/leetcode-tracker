@@ -18,6 +18,38 @@ export default function UploadPage() {
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [manualForm, setManualForm] = useState({
+    name: '', rollNumber: '', branch: '', semester: '', section: '', mentor: '', url: ''
+  });
+  const [manualError, setManualError] = useState('');
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setManualError('');
+    setIsSubmittingManual(true);
+    try {
+      const res = await fetch('/api/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([manualForm])
+      });
+      if (!res.ok) {
+        let err = await res.text();
+        try {
+          const parsed = JSON.parse(err);
+          err = parsed.error || err;
+        } catch(e) {}
+        throw new Error(err);
+      }
+      router.push('/');
+    } catch(e: any) {
+      setManualError(e.message || 'An error occurred saving the data.');
+    } finally {
+      setIsSubmittingManual(false);
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -241,8 +273,50 @@ export default function UploadPage() {
               )}
 
               {activeTab === "manual" && (
-                <div className="text-center py-12">
-                  <p className="text-muted mb-4">Manual entry form for v1 is skipped in this demo implementation to focus on the bulk upload flow.</p>
+                <div style={{ padding: '24px' }} className="animate-fade-in">
+                  <h3 className="text-xl font-semibold mb-6">Manual Student Entry</h3>
+                  {manualError && (
+                    <div style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--destructive)', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px' }}>
+                      {manualError}
+                    </div>
+                  )}
+                  <form onSubmit={handleManualSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Name *</label>
+                      <input required type="text" value={manualForm.name} onChange={e => setManualForm({...manualForm, name: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Roll Number *</label>
+                      <input required type="text" value={manualForm.rollNumber} onChange={e => setManualForm({...manualForm, rollNumber: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Branch *</label>
+                      <input required type="text" value={manualForm.branch} onChange={e => setManualForm({...manualForm, branch: e.target.value})} placeholder="e.g. CSE" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Semester *</label>
+                      <input required type="text" value={manualForm.semester} onChange={e => setManualForm({...manualForm, semester: e.target.value})} placeholder="e.g. 5" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Section *</label>
+                      <input required type="text" value={manualForm.section} onChange={e => setManualForm({...manualForm, section: e.target.value})} placeholder="e.g. A" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Mentor Name *</label>
+                      <input required type="text" value={manualForm.mentor} onChange={e => setManualForm({...manualForm, mentor: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                    </div>
+                    <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>LeetCode URL *</label>
+                      <input required type="url" value={manualForm.url} onChange={e => setManualForm({...manualForm, url: e.target.value})} placeholder="https://leetcode.com/username/" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                    </div>
+                    
+                    <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px', paddingTop: '20px', borderTop: '1px solid var(--surface-border)' }}>
+                      <button type="button" onClick={() => setManualForm({name: '', rollNumber: '', branch: '', semester: '', section: '', mentor: '', url: ''})} className="btn">Clear</button>
+                      <button type="submit" disabled={isSubmittingManual} className="btn btn-primary">
+                        {isSubmittingManual ? 'Saving...' : 'Add Student'}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               )}
             </div>
