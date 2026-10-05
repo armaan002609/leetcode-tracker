@@ -390,6 +390,9 @@ export default function Dashboard() {
             <span>LeetCode Tracker</span>
           </div>
           <div className="topnav-actions" style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+            <Link href="/analytics" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'white', textDecoration: 'none', background: 'rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 500 }}>
+              <Activity size={16} /> Analytics
+            </Link>
             <div className="search-wrapper" style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
               <button 
                 className="icon-btn hide-on-desktop" 
