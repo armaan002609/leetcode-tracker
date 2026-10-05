@@ -9,8 +9,9 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
-  ArrowLeft, Building2, CheckCircle2, CheckSquare, Target, Users, Zap, Layers, Trophy, BookOpen, ChevronRight, Activity, Medal, Search, ArrowUpDown
+  ArrowLeft, Building2, CheckCircle2, CheckSquare, Target, Users, Zap, Layers, Trophy, BookOpen, ChevronRight, Activity, Medal, Search, ArrowUpDown, Download
 } from "lucide-react";
+import { downloadCsv } from "@/lib/export/generateCsv";
 
 // Modern color palette based on reference
 const COLORS_TIER = ['#94a3b8', '#60a5fa', '#a40e19', '#2563eb', '#8b5cf6', '#10b981'];
@@ -212,6 +213,16 @@ export default function AnalyticsPage() {
     );
   }
 
+  const downloadGraphCsv = (headers: string[], data: any[], filename: string) => {
+    let csv = headers.join(',') + '\n';
+    data.forEach(item => {
+      // Need to stringify or just pick the values, but item might have objects. 
+      // For analytics charts, data is simple enough.
+      csv += Object.values(item).map(v => typeof v === 'object' && v !== null ? JSON.stringify(v).replace(/,/g, '') : v).join(',') + '\n';
+    });
+    downloadCsv(csv, filename);
+  };
+
   return (
     <div style={{ backgroundColor: '#f4f7f9', minHeight: '100vh', padding: '32px 40px', fontFamily: '"Inter", system-ui, sans-serif', color: '#1e293b' }}>
       
@@ -315,9 +326,18 @@ export default function AnalyticsPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '24px', marginBottom: '40px' }}>
             {/* Course Participation & Enrolled Turnout */}
             <div style={{ background: 'white', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <Activity size={16} color="#a40e19" />
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Course Participation & Enrolled Turnout</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Activity size={16} color="#a40e19" />
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Course Participation & Enrolled Turnout</h3>
+                </div>
+                <button 
+                  onClick={() => downloadGraphCsv(['Course', 'Enrolled', 'Active', 'Total Solved', 'Easy', 'Medium', 'Hard', 'Top Student', 'Avg Active', 'Avg Enrolled', 'Turnout'], branchData, 'course_participation.csv')}
+                  title="Download Data"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                >
+                  <Download size={16} />
+                </button>
               </div>
               <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '24px' }}>Enrolled Department Strength vs Active Leetcode Profiles</p>
               
@@ -338,9 +358,18 @@ export default function AnalyticsPage() {
 
             {/* Average Problems Solved per Student */}
             <div style={{ background: 'white', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <BookOpen size={16} color="#f59e0b" />
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Average Problems Solved per Student</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <BookOpen size={16} color="#f59e0b" />
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Average Problems Solved per Student</h3>
+                </div>
+                <button 
+                  onClick={() => downloadGraphCsv(['Course', 'Enrolled', 'Active', 'Total Solved', 'Easy', 'Medium', 'Hard', 'Top Student', 'Avg Active', 'Avg Enrolled', 'Turnout'], branchData, 'avg_solved_per_course.csv')}
+                  title="Download Data"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                >
+                  <Download size={16} />
+                </button>
               </div>
               <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '24px' }}>Comparison of Avg per Active Student vs Avg per Total Enrolled</p>
               
@@ -361,9 +390,18 @@ export default function AnalyticsPage() {
 
             {/* Department Problem Difficulty Breakdown */}
             <div style={{ background: 'white', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <Target size={16} color="#10b981" />
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Department Problem Difficulty Breakdown</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Target size={16} color="#10b981" />
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Department Problem Difficulty Breakdown</h3>
+                </div>
+                <button 
+                  onClick={() => downloadGraphCsv(['Difficulty', 'Questions Solved', 'Color'], diffData, 'department_difficulty.csv')}
+                  title="Download Data"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                >
+                  <Download size={16} />
+                </button>
               </div>
               <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '24px' }}>Total solved distributed across Easy, Medium, and Hard</p>
               
@@ -384,9 +422,18 @@ export default function AnalyticsPage() {
 
             {/* Performance Brackets & Tier Distribution */}
             <div style={{ background: 'white', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                <Users size={16} color="#8b5cf6" />
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Performance Brackets & Tier Distribution</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Users size={16} color="#8b5cf6" />
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Performance Brackets & Tier Distribution</h3>
+                </div>
+                <button 
+                  onClick={() => downloadGraphCsv(['Range', 'Student Count'], tierData, 'performance_brackets.csv')}
+                  title="Download Data"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                >
+                  <Download size={16} />
+                </button>
               </div>
               <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '24px' }}>Count of students grouped by problem range solved</p>
               
@@ -507,9 +554,18 @@ export default function AnalyticsPage() {
         <div className="animate-fade-in">
           {/* Top 10 High-Scoring Students Leaderboard Chart */}
           <div style={{ background: 'white', borderRadius: '12px', padding: '28px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', marginBottom: '32px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <Medal size={20} color="#f59e0b" />
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Top 10 High-Scoring Students (Global)</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Medal size={20} color="#f59e0b" />
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Top 10 High-Scoring Students (Global)</h3>
+              </div>
+              <button 
+                onClick={() => downloadGraphCsv(['Name', 'Easy', 'Medium', 'Hard', 'Total', 'Branch'], top10Students, 'top_10_students.csv')}
+                title="Download Data"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <Download size={18} />
+              </button>
             </div>
             <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '32px' }}>Leaderboard breakdown across Easy, Medium, and Hard solved problems.</p>
             
