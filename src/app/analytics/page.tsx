@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 // Modern color palette based on reference
-const COLORS_TIER = ['#94a3b8', '#60a5fa', '#3b82f6', '#2563eb', '#8b5cf6', '#10b981'];
+const COLORS_TIER = ['#94a3b8', '#60a5fa', '#a40e19', '#2563eb', '#8b5cf6', '#10b981'];
 const DIFF_COLORS = { easy: '#22c55e', medium: '#f59e0b', hard: '#dc2626' };
 
 export default function AnalyticsPage() {
@@ -157,12 +157,12 @@ export default function AnalyticsPage() {
       
       {/* Premium Header */}
       <div style={{ 
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #172554 100%)', 
+        background: 'linear-gradient(135deg, #a40e19 0%, #59060b 100%)', 
         borderRadius: '16px', 
         padding: '32px', 
         color: 'white', 
         marginBottom: '24px', 
-        boxShadow: '0 10px 25px -5px rgba(30, 58, 138, 0.4), 0 8px 10px -6px rgba(30, 58, 138, 0.2)',
+        boxShadow: '0 10px 25px -5px rgba(164, 14, 25, 0.4), 0 8px 10px -6px rgba(164, 14, 25, 0.2)',
         position: 'relative',
         overflow: 'hidden'
       }}>
@@ -212,8 +212,8 @@ export default function AnalyticsPage() {
             padding: '12px 4px', 
             fontSize: '0.9rem', 
             fontWeight: i === 0 ? 600 : 500, 
-            color: i === 0 ? '#1e40af' : '#64748b',
-            borderBottom: i === 0 ? '3px solid #1e40af' : '3px solid transparent',
+            color: i === 0 ? '#a40e19' : '#64748b',
+            borderBottom: i === 0 ? '3px solid #a40e19' : '3px solid transparent',
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', gap: '8px'
           }}>
@@ -229,14 +229,14 @@ export default function AnalyticsPage() {
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '40px' }}>
         {[
-          { label: 'TOTAL DEPT ENROLLED', value: totalEnrolled, icon: <Building2 size={20} color="#3b82f6" />, desc: `${activeStudents.length} Active | ${totalEnrolled - activeStudents.length} Inactive` },
+          { label: 'TOTAL DEPT ENROLLED', value: totalEnrolled, icon: <Building2 size={20} color="#a40e19" />, desc: `${activeStudents.length} Active | ${totalEnrolled - activeStudents.length} Inactive` },
           { label: 'SHEET SUBMISSIONS', value: successfulScrapes, icon: <CheckSquare size={20} color="#10b981" />, desc: `${((successfulScrapes/totalEnrolled)*100).toFixed(1)}% of total successfully parsed` },
           { label: 'TOTAL PROBLEMS SOLVED', value: totalSolved.toLocaleString(), icon: <Target size={20} color="#f59e0b" />, desc: `${diffData.find(d=>d.name==='Easy Problems')?.value.toLocaleString() || 0} E • ${diffData.find(d=>d.name==='Medium Problems')?.value.toLocaleString() || 0} M • ${diffData.find(d=>d.name==='Hard Problems')?.value.toLocaleString() || 0} H` },
           { label: 'AVG SOLVED (ACTIVE)', value: avgActive, icon: <Zap size={20} color="#8b5cf6" />, desc: 'Per student with >0 solved' },
           { label: 'AVG SOLVED (ENROLLED)', value: avgEnrolled, icon: <Users size={20} color="#64748b" />, desc: `Across all ${totalEnrolled} enrolled` },
         ].map((kpi, i) => (
           <div key={i} style={{ background: 'white', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: i === 0 ? '#3b82f6' : i === 1 ? '#10b981' : i === 2 ? '#f59e0b' : i === 3 ? '#8b5cf6' : '#94a3b8' }}></div>
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: i === 0 ? '#a40e19' : i === 1 ? '#10b981' : i === 2 ? '#f59e0b' : i === 3 ? '#8b5cf6' : '#94a3b8' }}></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', letterSpacing: '0.5px' }}>{kpi.label}</div>
               <div style={{ background: '#f8fafc', padding: '6px', borderRadius: '8px' }}>{kpi.icon}</div>
@@ -257,7 +257,7 @@ export default function AnalyticsPage() {
           <div key={branch.name} style={{ background: 'white', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e40af', background: '#eff6ff', padding: '4px 10px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>{branch.name}</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#a40e19', background: '#fff1f2', padding: '4px 10px', borderRadius: '6px', border: '1px solid #fecdd3' }}>{branch.name}</div>
               </div>
               <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#059669', background: '#d1fae5', padding: '4px 10px', borderRadius: '6px' }}>{branch.turnout}% Turnout</div>
             </div>
@@ -275,7 +275,7 @@ export default function AnalyticsPage() {
               </div>
               <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>AVG / ACTIVE</div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#3b82f6' }}>{branch.avgActive}</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#a40e19' }}>{branch.avgActive}</div>
                 <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px' }}>per active student</div>
               </div>
               <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
@@ -289,7 +289,7 @@ export default function AnalyticsPage() {
               <div style={{ fontSize: '0.85rem', color: '#475569' }}>
                 Top: <span style={{ fontWeight: 700, color: '#0f172a' }}>{branch.topStudent?.name || 'N/A'}</span> <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>({branch.topStudent?.totalSolved || 0} solved)</span>
               </div>
-              <button style={{ fontSize: '0.75rem', fontWeight: 600, color: '#1e40af', background: 'transparent', border: '1px solid #1e40af', padding: '4px 12px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+              <button style={{ fontSize: '0.75rem', fontWeight: 600, color: '#a40e19', background: 'transparent', border: '1px solid #a40e19', padding: '4px 12px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
                 View Students <ChevronRight size={14} />
               </button>
             </div>
@@ -303,7 +303,7 @@ export default function AnalyticsPage() {
         {/* Course Participation & Enrolled Turnout */}
         <div style={{ background: 'white', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-            <Activity size={16} color="#3b82f6" />
+            <Activity size={16} color="#a40e19" />
             <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Course Participation & Enrolled Turnout</h3>
           </div>
           <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '24px' }}>Enrolled Department Strength vs Active Leetcode Profiles</p>
@@ -317,7 +317,7 @@ export default function AnalyticsPage() {
                 <RechartsTooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontSize: '0.85rem' }} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '0.8rem', paddingTop: '10px' }} />
                 <Bar dataKey="enrolled" name="Enrolled Total Strength" fill="#cbd5e1" radius={[4, 4, 0, 0]} barSize={40} />
-                <Bar dataKey="active" name="Active Sheet Submissions" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+                <Bar dataKey="active" name="Active Sheet Submissions" fill="#a40e19" radius={[4, 4, 0, 0]} barSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
