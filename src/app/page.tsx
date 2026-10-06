@@ -443,15 +443,16 @@ export default function Dashboard() {
                         <Link href="/admin/data" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
                           <Database size={16} /> Full Data
                         </Link>
-                        <Link href="/admin/assignments" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
-                          <Target size={16} /> Assignments
-                        </Link>
                         <Link href="/upload" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
                           <UploadCloud size={16} /> Upload Data
                         </Link>
                         <div style={{ height: '1px', background: 'var(--surface-border)', margin: '4px 0' }}></div>
                       </>
                     )}
+
+                    <Link href="/admin/assignments" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                      <Target size={16} /> Assignments
+                    </Link>
 
                     <button 
                       onClick={() => { setIsNavMenuOpen(false); setIsPasswordModalOpen(true); }}

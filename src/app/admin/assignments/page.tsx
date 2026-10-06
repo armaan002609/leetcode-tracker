@@ -57,11 +57,11 @@ export default function AssignmentsPage() {
     }
   };
 
+  const isAdmin = (session?.user as any)?.role === 'admin';
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
-    } else if (status === "authenticated" && (session?.user as any)?.role !== 'admin') {
-      router.push("/");
     } else if (status === "authenticated") {
       fetchAssignments();
       fetchBranches();
@@ -241,8 +241,8 @@ export default function AssignmentsPage() {
             
             <div style={{ flex: '1 1 600px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
-            {/* Create Assignment Form */}
-            <div className="dashboard-card" style={{ margin: 0, width: '100%' }}>
+            {isAdmin && (
+              <div className="dashboard-card" style={{ margin: 0, width: '100%' }}>
               <div className="card-header">
                 <h3 className="card-title">Assign Question</h3>
               </div>
@@ -298,6 +298,7 @@ export default function AssignmentsPage() {
                 </button>
               </form>
             </div>
+            )}
 
             {/* Assignments List */}
             <div className="dashboard-card" style={{ margin: 0 }}>
@@ -351,22 +352,26 @@ export default function AssignmentsPage() {
                           <td style={{padding: '12px 16px', textAlign: 'right', fontSize: '0.85rem', color: 'var(--muted)'}}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
                               <span>{new Date(a.createdAt).toLocaleDateString()}</span>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); openEditModal(a); }}
-                                className="icon-btn"
-                                title="Edit"
-                                style={{ color: 'var(--muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
-                              >
-                                <Edit2 size={16} />
-                              </button>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); handleDelete(a.id); }}
-                                className="icon-btn"
-                                title="Delete"
-                                style={{ color: 'var(--destructive)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                              {isAdmin && (
+                                <>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); openEditModal(a); }}
+                                    className="icon-btn"
+                                    title="Edit"
+                                    style={{ color: 'var(--muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                                  >
+                                    <Edit2 size={16} />
+                                  </button>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); handleDelete(a.id); }}
+                                    className="icon-btn"
+                                    title="Delete"
+                                    style={{ color: 'var(--destructive)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </>
+                              )}
                               <a 
                                 href={`/api/admin/assignments/${a.id}/export`}
                                 download
