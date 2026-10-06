@@ -95,49 +95,33 @@ export async function POST(req: Request) {
   }
 }
 
-import { authOptions } from '@/lib/auth';
-
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const isAdmin = (session.user as any).role === 'admin';
-    const userId = (session.user as any).id;
-
     const assignments = await prisma.assignment.findMany({
       include: {
         assignedBy: {
           select: { username: true }
+        },
+        _count: {
+          select: { studentAssignments: true }
         }
       },
       orderBy: { createdAt: 'desc' }
     });
 
-    // For each assignment, get the count of completed and total for this user's students
+    // For each assignment, get the count of completed
     const enrichedAssignments = await Promise.all(assignments.map(async (assignment) => {
-      const whereFilter = isAdmin ? {} : { student: { assignedUserId: userId || "missing-id" } };
-
-      const totalAssigned = await prisma.studentAssignment.count({
-        where: {
-          assignmentId: assignment.id,
-          ...whereFilter
-        }
-      });
-
       const completedCount = await prisma.studentAssignment.count({
         where: {
           assignmentId: assignment.id,
-          status: 'completed',
-          ...whereFilter
+          status: 'completed'
         }
       });
 
       return {
         ...assignment,
         completedCount,
-        totalAssigned
+        totalAssigned: assignment._count.studentAssignments
       };
     }));
 
@@ -147,4 +131,3 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
