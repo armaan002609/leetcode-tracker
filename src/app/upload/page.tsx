@@ -19,8 +19,9 @@ export default function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [manualForm, setManualForm] = useState({
-    name: '', rollNumber: '', branch: '', semester: '', section: '', mentor: '', url: ''
+    name: '', rollNumber: '', branch: '', semester: '1st', section: 'A', mentor: '', url: ''
   });
+  const [mentorDesignation, setMentorDesignation] = useState('Mr.');
   const [manualError, setManualError] = useState('');
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
 
@@ -29,10 +30,14 @@ export default function UploadPage() {
     setManualError('');
     setIsSubmittingManual(true);
     try {
+      const payload = {
+        ...manualForm,
+        mentor: `${mentorDesignation} ${manualForm.mentor}`.trim()
+      };
       const res = await fetch('/api/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify([manualForm])
+        body: JSON.stringify([payload])
       });
       if (!res.ok) {
         let err = await res.text();
@@ -295,15 +300,35 @@ export default function UploadPage() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Semester *</label>
-                      <input required type="text" value={manualForm.semester} onChange={e => setManualForm({...manualForm, semester: e.target.value})} placeholder="e.g. 5" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                      <select required value={manualForm.semester} onChange={e => setManualForm({...manualForm, semester: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                        {["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"].map(sem => (
+                          <option key={sem} value={sem}>{sem}</option>
+                        ))}
+                      </select>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Section *</label>
-                      <input required type="text" value={manualForm.section} onChange={e => setManualForm({...manualForm, section: e.target.value})} placeholder="e.g. A" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                      <select required value={manualForm.section} onChange={e => setManualForm({...manualForm, section: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                        {Array.from({length: 26}, (_, i) => String.fromCharCode(65 + i)).map(sec => (
+                          <option key={sec} value={sec}>{sec}</option>
+                        ))}
+                      </select>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Mentor Name *</label>
-                      <input required type="text" value={manualForm.mentor} onChange={e => setManualForm({...manualForm, mentor: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <select 
+                          value={mentorDesignation} 
+                          onChange={e => setMentorDesignation(e.target.value)} 
+                          style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                        >
+                          <option value="Mr.">Mr.</option>
+                          <option value="Ms.">Ms.</option>
+                          <option value="Mrs.">Mrs.</option>
+                          <option value="Dr.">Dr.</option>
+                        </select>
+                        <input required type="text" value={manualForm.mentor} onChange={e => setManualForm({...manualForm, mentor: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', flex: 1 }} />
+                      </div>
                     </div>
                     <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>LeetCode URL *</label>
@@ -311,7 +336,10 @@ export default function UploadPage() {
                     </div>
                     
                     <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px', paddingTop: '20px', borderTop: '1px solid var(--surface-border)' }}>
-                      <button type="button" onClick={() => setManualForm({name: '', rollNumber: '', branch: '', semester: '', section: '', mentor: '', url: ''})} className="btn">Clear</button>
+                      <button type="button" onClick={() => {
+                        setManualForm({name: '', rollNumber: '', branch: '', semester: '1st', section: 'A', mentor: '', url: ''});
+                        setMentorDesignation('Mr.');
+                      }} className="btn">Clear</button>
                       <button type="submit" disabled={isSubmittingManual} className="btn btn-primary">
                         {isSubmittingManual ? 'Saving...' : 'Add Student'}
                       </button>
