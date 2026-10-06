@@ -303,14 +303,14 @@ export default function AssignmentsPage() {
             <div className="dashboard-card" style={{ margin: 0 }}>
               <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 className="card-title">All Assignments</h3>
-                <a 
-                  href="/api/admin/assignments/export-all"
-                  download
-                  className="btn btn-outline"
-                  style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '0.85rem' }}
-                >
-                  <Download size={16} /> Export All
-                </a>
+                  <a 
+                    href="/api/admin/assignments/export-all"
+                    download
+                    className="btn btn-outline"
+                    style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '0.85rem' }}
+                  >
+                    <Download size={16} /> Export All
+                  </a>
               </div>
               {assignments.length === 0 ? (
                 <div className="p-8 text-center text-muted">No assignments created yet.</div>
