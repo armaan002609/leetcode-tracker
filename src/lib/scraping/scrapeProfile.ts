@@ -115,58 +115,53 @@ export async function scrapeProfile(url: string, controller?: AbortController): 
 
     const data = await response.json();
 
-const USER_PROFILE_QUERY_NO_CALENDAR = `
-  query getUserProfile($username: String!) {
-    matchedUser(username: $username) {
-      username
-      profile {
-        ranking
-      }
-      badges {
-        id
-        name
-      }
-      submitStats {
-        acSubmissionNum {
-          difficulty
-          count
+    let responseData = data;
+    
+    // If there are permission errors, strip the offending fields and retry
+    if (data.errors && data.errors.some((e: any) => e.message?.toLowerCase().includes('permission'))) {
+      let retryQuery = USER_PROFILE_QUERY;
+      
+      for (const err of data.errors) {
+        if (err.message?.toLowerCase().includes('permission')) {
+          const field = err.path?.[err.path.length - 1];
+          if (field === 'userCalendar') {
+            retryQuery = retryQuery.replace(/userCalendar\s*\{\s*submissionCalendar\s*\}/g, '');
+          } else if (field === 'submitStats') {
+            retryQuery = retryQuery.replace(/submitStats\s*\{\s*acSubmissionNum\s*\{\s*difficulty\s*count\s*\}\s*\}/g, '');
+          } else if (field === 'badges') {
+            retryQuery = retryQuery.replace(/badges\s*\{\s*id\s*name\s*\}/g, '');
+          } else if (field === 'profile') {
+            retryQuery = retryQuery.replace(/profile\s*\{\s*ranking\s*\}/g, '');
+          }
         }
+      }
+
+      const retryResponse = await fetch(LEETCODE_GRAPHQL_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        body: JSON.stringify({
+          query: retryQuery,
+          variables: { username }
+        }),
+        signal: controller?.signal,
+        cache: 'no-store'
+      });
+      
+      if (retryResponse.ok) {
+        responseData = await retryResponse.json();
       }
     }
-  }
-`;
 
-    let responseData = data;
-
-    if (data.errors && data.errors.length > 0) {
-      // Check if user doesn't exist or is private
-      const errorMsg = data.errors[0].message || '';
-      
-      if (errorMsg.includes('permission to check the calendar') || errorMsg.includes('permission')) {
-        const retryResponse = await fetch(LEETCODE_GRAPHQL_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          },
-          body: JSON.stringify({
-            query: USER_PROFILE_QUERY_NO_CALENDAR,
-            variables: { username }
-          }),
-          signal: controller?.signal,
-          cache: 'no-store'
-        });
-        
-        if (retryResponse.ok) {
-          responseData = await retryResponse.json();
-        } else {
-          return { status: 'unknown_error', solved_today: null, total_solved: null, easy_solved: null, medium_solved: null, hard_solved: null, global_rank: null, badges: null };
-        }
-      } else if (errorMsg.includes('not found')) {
+    if (responseData.errors && responseData.errors.length > 0) {
+      // Check if user doesn't exist or is still failing
+      const errorMsg = responseData.errors[0].message || '';
+      if (errorMsg.includes('not found')) {
         return { status: 'not_found', solved_today: null, total_solved: null, easy_solved: null, medium_solved: null, hard_solved: null, global_rank: null, badges: null };
-      } else {
-        return { status: 'unknown_error', solved_today: null, total_solved: null, easy_solved: null, medium_solved: null, hard_solved: null, global_rank: null, badges: null };
       }
+      return { status: 'unknown_error', solved_today: null, total_solved: null, easy_solved: null, medium_solved: null, hard_solved: null, global_rank: null, badges: null };
     }
 
     if (!responseData.data || !responseData.data.matchedUser) {
@@ -263,6 +258,12 @@ export async function fetchRecentAcSubmissions(username: string, limit: number =
     if (!response.ok) return [];
 
     const data = await response.json();
+    
+    if (data.errors && data.errors.length > 0) {
+      // Permission error or other error, safely fallback to no submissions
+      return [];
+    }
+    
     const submissions = data?.data?.recentAcSubmissionList || [];
     
     // Attach difficulty
