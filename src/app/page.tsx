@@ -295,8 +295,8 @@ export default function Dashboard() {
   const rateLimitCount = rows.filter(r => r.status === 'rate_limited_retrying').length;
 
   const uniqueBranches = useMemo(() => Array.from(new Set(rows.map(r => r.branch).filter(Boolean))).sort(), [rows]);
-  const uniqueSections = useMemo(() => Array.from(new Set(rows.map(r => r.section).filter(Boolean))).sort(), [rows]);
-  const uniqueSemesters = useMemo(() => Array.from(new Set(rows.map(r => r.semester).filter(Boolean))).sort(), [rows]);
+  const uniqueSemesters = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
+  const uniqueSections = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
 
   const filteredRows = useMemo(() => {
     return rows.filter(r => {
@@ -606,7 +606,7 @@ export default function Dashboard() {
                 style={{padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', background: 'white', flex: '1 1 min-content'}}
               >
                 <option value="all">All Semesters</option>
-                {uniqueSemesters.map(s => <option key={s as string} value={s as string}>Sem {s as string}</option>)}
+                {uniqueSemesters.map(s => <option key={s} value={s}>Sem {s}</option>)}
               </select>
               <select 
                 value={sectionFilter}
@@ -614,7 +614,7 @@ export default function Dashboard() {
                 style={{padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', background: 'white', flex: '1 1 min-content'}}
               >
                 <option value="all">All Sections</option>
-                {uniqueSections.map(s => <option key={s as string} value={s as string}>Sec {s as string}</option>)}
+                {uniqueSections.map(s => <option key={s} value={s}>Sec {s}</option>)}
               </select>
               <button 
                 onClick={() => handleRefresh(rows.map(r => r.rollNumber))} 

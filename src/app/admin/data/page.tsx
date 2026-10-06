@@ -197,13 +197,16 @@ export default function DataExplorer() {
 
               <div style={{ flex: '0 1 150px' }}>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Section</label>
-                <input 
-                  type="text" 
+                <select 
                   value={section}
                   onChange={e => { setSection(e.target.value); setPage(1); }}
-                  placeholder="e.g. A"
-                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
-                />
+                  style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', background: 'var(--surface)' }}
+                >
+                  <option value="">All Sections</option>
+                  {Array.from({length: 26}, (_, i) => String.fromCharCode(65 + i)).map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -374,11 +377,17 @@ export default function DataExplorer() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Semester</label>
-                  <input type="text" value={editForm.semester} onChange={e => setEditForm({...editForm, semester: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                  <select value={editForm.semester} onChange={e => setEditForm({...editForm, semester: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', background: 'var(--surface)' }}>
+                    <option value="">Select Semester</option>
+                    {["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"].map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Section</label>
-                  <input type="text" value={editForm.section} onChange={e => setEditForm({...editForm, section: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                  <select value={editForm.section} onChange={e => setEditForm({...editForm, section: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', background: 'var(--surface)' }}>
+                    <option value="">Select Section</option>
+                    {Array.from({length: 26}, (_, i) => String.fromCharCode(65 + i)).map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Mentor Name</label>
