@@ -626,36 +626,36 @@ export default function Dashboard() {
                 <RefreshCw size={16} className={isScraping ? 'animate-spin' : ''} /> Refresh All
               </button>
               
-              <div style={{ position: 'relative', flex: '1 1 auto' }}>
-                <button 
-                  onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                  disabled={processedCount === 0}
-                  className="btn btn-primary"
-                  style={{width: '100%', whiteSpace: 'nowrap'}}
-                >
-                  <Download size={16} /> Export Data
-                </button>
-                {isExportMenuOpen && processedCount > 0 && (
-                  <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setIsExportMenuOpen(false)} />
-                    <div className="animate-slide-up" style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: 'white', border: '1px solid var(--surface-border)', borderRadius: 8, boxShadow: 'var(--shadow-md)', minWidth: 200, zIndex: 20, padding: '8px 0', display: 'flex', flexDirection: 'column' }}>
-                      <button 
-                        onClick={handleExport}
-                        style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--foreground)' }}
-                        onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                        onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                      >
-                        Export as CSV
-                      </button>
-                      <button 
-                        onClick={() => { setIsExportMenuOpen(false); setIsGoogleSheetModalOpen(true); }}
-                        style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--foreground)' }}
-                        onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                        onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                      >
-                        Export to Google Sheets
-                      </button>
-                      {isAdmin && (
+              {isAdmin && (
+                <div style={{ position: 'relative', flex: '1 1 auto' }}>
+                  <button 
+                    onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                    disabled={processedCount === 0}
+                    className="btn btn-primary"
+                    style={{width: '100%', whiteSpace: 'nowrap'}}
+                  >
+                    <Download size={16} /> Export Data
+                  </button>
+                  {isExportMenuOpen && processedCount > 0 && (
+                    <>
+                      <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setIsExportMenuOpen(false)} />
+                      <div className="animate-slide-up" style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: 'white', border: '1px solid var(--surface-border)', borderRadius: 8, boxShadow: 'var(--shadow-md)', minWidth: 200, zIndex: 20, padding: '8px 0', display: 'flex', flexDirection: 'column' }}>
+                        <button 
+                          onClick={handleExport}
+                          style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--foreground)' }}
+                          onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          Export as CSV
+                        </button>
+                        <button 
+                          onClick={() => { setIsExportMenuOpen(false); setIsGoogleSheetModalOpen(true); }}
+                          style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--foreground)' }}
+                          onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          Export to Google Sheets
+                        </button>
                         <a 
                           href="/api/admin/submissions/export"
                           download
@@ -666,11 +666,11 @@ export default function Dashboard() {
                         >
                           Export All Solved Questions
                         </a>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               {isAdmin && (
                 <button 

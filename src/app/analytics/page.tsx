@@ -30,7 +30,8 @@ export default function AnalyticsPage() {
   const [filterSemester, setFilterSemester] = useState("all");
   const [filterSection, setFilterSection] = useState("all");
 
-  const { status } = useSession();
+  const { data: session, status } = useSession();
+  const isAdmin = session?.user && (session.user as any).role === 'admin';
   const router = useRouter();
 
   useEffect(() => {
@@ -331,13 +332,15 @@ export default function AnalyticsPage() {
                   <Activity size={16} color="#a40e19" />
                   <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Course Participation & Enrolled Turnout</h3>
                 </div>
-                <button 
-                  onClick={() => downloadGraphCsv(['Course', 'Enrolled', 'Active', 'Total Solved', 'Easy', 'Medium', 'Hard', 'Top Student', 'Avg Active', 'Avg Enrolled', 'Turnout'], branchData, 'course_participation.csv')}
-                  title="Download Data"
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
-                >
-                  <Download size={16} />
-                </button>
+                {isAdmin && (
+                  <button 
+                    onClick={() => downloadGraphCsv(['Course', 'Enrolled', 'Active', 'Total Solved', 'Easy', 'Medium', 'Hard', 'Top Student', 'Avg Active', 'Avg Enrolled', 'Turnout'], branchData, 'course_participation.csv')}
+                    title="Download Data"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                  >
+                    <Download size={16} />
+                  </button>
+                )}
               </div>
               <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '24px' }}>Enrolled Department Strength vs Active Leetcode Profiles</p>
               
@@ -363,13 +366,15 @@ export default function AnalyticsPage() {
                   <BookOpen size={16} color="#f59e0b" />
                   <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Average Problems Solved per Student</h3>
                 </div>
-                <button 
-                  onClick={() => downloadGraphCsv(['Course', 'Enrolled', 'Active', 'Total Solved', 'Easy', 'Medium', 'Hard', 'Top Student', 'Avg Active', 'Avg Enrolled', 'Turnout'], branchData, 'avg_solved_per_course.csv')}
-                  title="Download Data"
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
-                >
-                  <Download size={16} />
-                </button>
+                {isAdmin && (
+                  <button 
+                    onClick={() => downloadGraphCsv(['Course', 'Enrolled', 'Active', 'Total Solved', 'Easy', 'Medium', 'Hard', 'Top Student', 'Avg Active', 'Avg Enrolled', 'Turnout'], branchData, 'avg_solved_per_course.csv')}
+                    title="Download Data"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                  >
+                    <Download size={16} />
+                  </button>
+                )}
               </div>
               <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '24px' }}>Comparison of Avg per Active Student vs Avg per Total Enrolled</p>
               
@@ -395,13 +400,15 @@ export default function AnalyticsPage() {
                   <Target size={16} color="#10b981" />
                   <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Department Problem Difficulty Breakdown</h3>
                 </div>
-                <button 
-                  onClick={() => downloadGraphCsv(['Difficulty', 'Questions Solved', 'Color'], diffData, 'department_difficulty.csv')}
-                  title="Download Data"
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
-                >
-                  <Download size={16} />
-                </button>
+                {isAdmin && (
+                  <button 
+                    onClick={() => downloadGraphCsv(['Difficulty', 'Questions Solved', 'Color'], diffData, 'department_difficulty.csv')}
+                    title="Download Data"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                  >
+                    <Download size={16} />
+                  </button>
+                )}
               </div>
               <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '24px' }}>Total solved distributed across Easy, Medium, and Hard</p>
               
@@ -427,13 +434,15 @@ export default function AnalyticsPage() {
                   <Users size={16} color="#8b5cf6" />
                   <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Performance Brackets & Tier Distribution</h3>
                 </div>
-                <button 
-                  onClick={() => downloadGraphCsv(['Range', 'Student Count'], tierData, 'performance_brackets.csv')}
-                  title="Download Data"
-                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
-                >
-                  <Download size={16} />
-                </button>
+                {isAdmin && (
+                  <button 
+                    onClick={() => downloadGraphCsv(['Range', 'Student Count'], tierData, 'performance_brackets.csv')}
+                    title="Download Data"
+                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                  >
+                    <Download size={16} />
+                  </button>
+                )}
               </div>
               <p style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '24px' }}>Count of students grouped by problem range solved</p>
               
@@ -559,13 +568,15 @@ export default function AnalyticsPage() {
                 <Medal size={20} color="#f59e0b" />
                 <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Top 10 High-Scoring Students (Global)</h3>
               </div>
-              <button 
-                onClick={() => downloadGraphCsv(['Name', 'Easy', 'Medium', 'Hard', 'Total', 'Branch'], top10Students, 'top_10_students.csv')}
-                title="Download Data"
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
-              >
-                <Download size={18} />
-              </button>
+              {isAdmin && (
+                <button 
+                  onClick={() => downloadGraphCsv(['Name', 'Easy', 'Medium', 'Hard', 'Total', 'Branch'], top10Students, 'top_10_students.csv')}
+                  title="Download Data"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                >
+                  <Download size={18} />
+                </button>
+              )}
             </div>
             <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '32px' }}>Leaderboard breakdown across Easy, Medium, and Hard solved problems.</p>
             
