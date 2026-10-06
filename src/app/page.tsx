@@ -462,7 +462,10 @@ export default function Dashboard() {
                       <Lock size={16} /> Change Password
                     </button>
                     <button 
-                      onClick={() => signOut({ callbackUrl: '/login' })}
+                      onClick={async () => {
+                        await signOut({ redirect: false });
+                        router.push('/login');
+                      }}
                       style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', color: 'var(--danger)' }}
                       onMouseOver={(e) => e.currentTarget.style.background = '#fef2f2'}
                       onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
