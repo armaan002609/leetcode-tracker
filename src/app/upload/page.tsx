@@ -18,6 +18,43 @@ export default function UploadPage() {
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [manualForm, setManualForm] = useState({
+    name: '', rollNumber: '', branch: '', semester: '1st', section: 'A', mentor: '', url: ''
+  });
+  const [mentorDesignation, setMentorDesignation] = useState('Mr.');
+  const [manualError, setManualError] = useState('');
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setManualError('');
+    setIsSubmittingManual(true);
+    try {
+      const payload = {
+        ...manualForm,
+        mentor: `${mentorDesignation} ${manualForm.mentor}`.trim()
+      };
+      const res = await fetch('/api/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify([payload])
+      });
+      if (!res.ok) {
+        let err = await res.text();
+        try {
+          const parsed = JSON.parse(err);
+          err = parsed.error || err;
+        } catch(e) {}
+        throw new Error(err);
+      }
+      router.push('/');
+    } catch(e: any) {
+      setManualError(e.message || 'An error occurred saving the data.');
+    } finally {
+      setIsSubmittingManual(false);
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -241,8 +278,73 @@ export default function UploadPage() {
               )}
 
               {activeTab === "manual" && (
-                <div className="text-center py-12">
-                  <p className="text-muted mb-4">Manual entry form for v1 is skipped in this demo implementation to focus on the bulk upload flow.</p>
+                <div style={{ padding: '24px' }} className="animate-fade-in">
+                  <h3 className="text-xl font-semibold mb-6">Manual Student Entry</h3>
+                  {manualError && (
+                    <div style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--destructive)', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px' }}>
+                      {manualError}
+                    </div>
+                  )}
+                  <form onSubmit={handleManualSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Name *</label>
+                      <input required type="text" value={manualForm.name} onChange={e => setManualForm({...manualForm, name: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Roll Number *</label>
+                      <input required type="text" value={manualForm.rollNumber} onChange={e => setManualForm({...manualForm, rollNumber: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Branch *</label>
+                      <input required type="text" value={manualForm.branch} onChange={e => setManualForm({...manualForm, branch: e.target.value})} placeholder="e.g. CSE" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Semester *</label>
+                      <select required value={manualForm.semester} onChange={e => setManualForm({...manualForm, semester: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                        {["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"].map(sem => (
+                          <option key={sem} value={sem}>{sem}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Section *</label>
+                      <select required value={manualForm.section} onChange={e => setManualForm({...manualForm, section: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                        {Array.from({length: 26}, (_, i) => String.fromCharCode(65 + i)).map(sec => (
+                          <option key={sec} value={sec}>{sec}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Mentor Name *</label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <select 
+                          value={mentorDesignation} 
+                          onChange={e => setMentorDesignation(e.target.value)} 
+                          style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                        >
+                          <option value="Mr.">Mr.</option>
+                          <option value="Ms.">Ms.</option>
+                          <option value="Mrs.">Mrs.</option>
+                          <option value="Dr.">Dr.</option>
+                        </select>
+                        <input required type="text" value={manualForm.mentor} onChange={e => setManualForm({...manualForm, mentor: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', flex: 1 }} />
+                      </div>
+                    </div>
+                    <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>LeetCode URL *</label>
+                      <input required type="url" value={manualForm.url} onChange={e => setManualForm({...manualForm, url: e.target.value})} placeholder="https://leetcode.com/username/" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                    </div>
+                    
+                    <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px', paddingTop: '20px', borderTop: '1px solid var(--surface-border)' }}>
+                      <button type="button" onClick={() => {
+                        setManualForm({name: '', rollNumber: '', branch: '', semester: '1st', section: 'A', mentor: '', url: ''});
+                        setMentorDesignation('Mr.');
+                      }} className="btn">Clear</button>
+                      <button type="submit" disabled={isSubmittingManual} className="btn btn-primary">
+                        {isSubmittingManual ? 'Saving...' : 'Add Student'}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               )}
             </div>

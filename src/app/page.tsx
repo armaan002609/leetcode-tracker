@@ -5,11 +5,12 @@ import { generateCsv, downloadCsv } from "@/lib/export/generateCsv";
 import { 
   CheckCircle2, Clock, Lock, HelpCircle, 
   AlertTriangle, RotateCw, Download, Search, AlertCircle,
-  Menu, User, Grid, Home, ArrowLeft, Target, Activity, Award, UploadCloud, RefreshCw, Trash2, X, LogIn, LogOut
+  Menu, User, Grid, Home, ArrowLeft, Target, Activity, Award, UploadCloud, RefreshCw, Trash2, X, LogIn, LogOut, Database
 } from "lucide-react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import DashboardCharts from "@/components/DashboardCharts";
 
 const StatusIcon = ({ status }: { status: string }) => {
   switch (status) {
@@ -43,6 +44,8 @@ export default function Dashboard() {
 
   const [recentSubmissions, setRecentSubmissions] = useState<any[]>([]);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+  const [assignedQuestions, setAssignedQuestions] = useState<any[]>([]);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
 
   // Assignment states
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
@@ -50,7 +53,8 @@ export default function Dashboard() {
   const [selectedUserIdToAssign, setSelectedUserIdToAssign] = useState("");
 
   // Change Password states
-  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -58,15 +62,7 @@ export default function Dashboard() {
 
   // Export states
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
-  const [isGoogleSheetModalOpen, setIsGoogleSheetModalOpen] = useState(false);
-  const [googleSheetId, setGoogleSheetId] = useState("");
-  const [googleSheetName, setGoogleSheetName] = useState("Sheet1");
-  const [isExportingToSheets, setIsExportingToSheets] = useState(false);
 
-  useEffect(() => {
-    const savedId = localStorage.getItem('leetcode_tracker_sheet_id');
-    if (savedId) setGoogleSheetId(savedId);
-  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -159,47 +155,6 @@ export default function Dashboard() {
     setIsExportMenuOpen(false);
   };
 
-  const handleGoogleSheetsExport = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!googleSheetId) return;
-
-    localStorage.setItem('leetcode_tracker_sheet_id', googleSheetId);
-    setIsExportingToSheets(true);
-
-    const exportRows = rows.map(r => ({
-      ...r,
-      solved_today: r.solvedToday,
-      total_solved: r.totalSolved,
-      easy_solved: r.easySolved,
-      medium_solved: r.mediumSolved,
-      hard_solved: r.hardSolved,
-      global_rank: r.globalRank,
-    }));
-
-    try {
-      const res = await fetch('/api/export/google-sheets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          spreadsheetId: googleSheetId,
-          sheetName: googleSheetName,
-          data: exportRows
-        })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert("Successfully exported to Google Sheets!");
-        setIsGoogleSheetModalOpen(false);
-      } else {
-        alert(`Export failed: ${data.error}`);
-      }
-    } catch (err) {
-      alert("An error occurred during export.");
-      console.error(err);
-    } finally {
-      setIsExportingToSheets(false);
-    }
-  };
 
   const handleRefresh = (rollNumbers: string[]) => {
     scrapeQueue(rollNumbers);
@@ -288,10 +243,11 @@ export default function Dashboard() {
   const processedCount = rows.filter(r => r.status !== 'pending' && r.status !== 'rate_limited_retrying').length;
   const successCount = rows.filter(r => r.status === 'success' || r.status === 'partial_success').length;
   const failCount = rows.filter(r => ['timeout', 'unknown_error', 'not_found', 'invalid_url'].includes(r.status)).length;
+  const rateLimitCount = rows.filter(r => r.status === 'rate_limited_retrying').length;
 
   const uniqueBranches = useMemo(() => Array.from(new Set(rows.map(r => r.branch).filter(Boolean))).sort(), [rows]);
-  const uniqueSections = useMemo(() => Array.from(new Set(rows.map(r => r.section).filter(Boolean))).sort(), [rows]);
-  const uniqueSemesters = useMemo(() => Array.from(new Set(rows.map(r => r.semester).filter(Boolean))).sort(), [rows]);
+  const uniqueSemesters = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
+  const uniqueSections = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
 
   const filteredRows = useMemo(() => {
     return rows.filter(r => {
@@ -324,9 +280,9 @@ export default function Dashboard() {
   const selectedStudent = useMemo(() => rows.find(r => r.id === selectedStudentId), [rows, selectedStudentId]);
 
   useEffect(() => {
-    if (selectedStudent?.url) {
+    if (selectedStudent) {
       setIsLoadingSubmissions(true);
-      fetch(`/api/recent-submissions?url=${encodeURIComponent(selectedStudent.url)}`)
+      fetch(`/api/students/${selectedStudent.id}/submissions`)
         .then(r => r.json())
         .then(data => {
           if (Array.isArray(data)) setRecentSubmissions(data);
@@ -337,8 +293,22 @@ export default function Dashboard() {
           setRecentSubmissions([]);
         })
         .finally(() => setIsLoadingSubmissions(false));
+        
+      setIsLoadingAssignments(true);
+      fetch(`/api/students/${selectedStudent.id}/assignments`)
+        .then(r => r.json())
+        .then(data => {
+          if (Array.isArray(data)) setAssignedQuestions(data);
+          else setAssignedQuestions([]);
+        })
+        .catch(e => {
+          console.error(e);
+          setAssignedQuestions([]);
+        })
+        .finally(() => setIsLoadingAssignments(false));
     } else {
       setRecentSubmissions([]);
+      setAssignedQuestions([]);
     }
   }, [selectedStudent]);
 
@@ -353,78 +323,112 @@ export default function Dashboard() {
     };
   }, [selectedStudentId]);
 
-  if (!isReady || status === "loading") return <div className="p-4 text-center"><RotateCw className="animate-spin text-muted" size={32} style={{margin: '40px auto'}} /></div>;
+  if (!isReady || status === "loading") {
+    return (
+      <div className="enterprise-loader-wrapper">
+        <div className="pulse-logo">L</div>
+        <div className="loader-text">Loading Dashboard...</div>
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="dashboard-layout animate-fade-in">
         <nav className="topnav">
-        <div className="topnav-brand">
-          <button className="icon-btn" style={{background: 'transparent'}}><Menu size={20} /></button>
-          <div className="topnav-brand-icon">L</div>
-          <span>LeetCode Tracker</span>
-        </div>
-        <div className="topnav-actions" style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
-          <div className="search-wrapper" style={{position: 'relative', width: '250px'}}>
-            <Search size={16} className="text-muted" style={{position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)'}} />
-            <input 
-              type="text" 
-              placeholder="Search name/roll..." 
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              style={{padding: '8px 12px 8px 32px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', width: '100%'}}
-            />
+          <div className="topnav-brand">
+            <div className="topnav-brand-icon">L</div>
+            <span>LeetCode Tracker</span>
           </div>
-          {isAdmin && (
-            <Link href="/upload" className="btn btn-primary" title="Upload Roster">
-              <UploadCloud size={16} /> Upload Data
+          <div className="topnav-actions" style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+            <Link href="/analytics" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'white', textDecoration: 'none', background: 'rgba(255,255,255,0.1)', padding: '8px 12px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 500 }}>
+              <Activity size={16} /> Analytics
             </Link>
-          )}
-          <div style={{ position: 'relative' }}>
-            <div 
-              onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-              style={{width: 36, height: 36, borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', transform: isUserDropdownOpen ? 'scale(0.95)' : 'scale(1)'}}
-              title="User Menu"
-            >
-              <User size={18} color="#64748b" />
+            <div className="search-wrapper" style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
+              <button 
+                className="icon-btn hide-on-desktop" 
+                onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+                style={{background: 'white', color: 'var(--muted)', border: 'none', cursor: 'pointer', display: 'none'}}
+              >
+                <Search size={18} />
+              </button>
+              
+              <div className={`search-input-container ${isSearchExpanded ? 'active' : ''}`}>
+                <Search size={16} className="text-muted hide-on-mobile" style={{position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)'}} />
+                <input 
+                  type="text" 
+                  placeholder="Search name/roll..." 
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  style={{padding: '8px 12px 8px 32px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', width: '250px', color: 'var(--foreground)', background: 'white'}}
+                />
+              </div>
             </div>
             
-            {isUserDropdownOpen && (
-              <>
-                <div 
-                  style={{ position: 'fixed', inset: 0, zIndex: 40 }} 
-                  onClick={() => setIsUserDropdownOpen(false)} 
-                />
-                <div 
-                  className="animate-slide-up"
-                  style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: 'white', border: '1px solid var(--surface-border)', borderRadius: '8px', boxShadow: 'var(--shadow-md)', minWidth: '220px', zIndex: 50, padding: '8px 0', display: 'flex', flexDirection: 'column' }}
-                >
-                  <div style={{ padding: '8px 16px 12px', borderBottom: '1px solid var(--surface-border)', marginBottom: '4px' }}>
-                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{session?.user?.name || "User"}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--muted)', textTransform: 'capitalize' }}>{(session?.user as any)?.role || "User"}</div>
+            <div style={{ position: 'relative' }}>
+              <div 
+                onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
+                style={{width: 36, height: 36, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', transform: isNavMenuOpen ? 'scale(0.95)' : 'scale(1)'}}
+                title="Menu"
+              >
+                <Menu size={20} color="var(--primary)" />
+              </div>
+              
+              {isNavMenuOpen && (
+                <>
+                  <div 
+                    style={{ position: 'fixed', inset: 0, zIndex: 40 }} 
+                    onClick={() => setIsNavMenuOpen(false)} 
+                  />
+                  <div 
+                    className="animate-slide-up"
+                    style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: 'white', border: '1px solid var(--surface-border)', borderRadius: '8px', boxShadow: 'var(--shadow-md)', minWidth: '220px', zIndex: 50, padding: '8px 0', display: 'flex', flexDirection: 'column', color: 'var(--foreground)' }}
+                  >
+                    <div style={{ padding: '8px 16px 12px', borderBottom: '1px solid var(--surface-border)', marginBottom: '4px' }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{session?.user?.name || "User"}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--muted)', textTransform: 'capitalize' }}>{(session?.user as any)?.role || "User"}</div>
+                    </div>
+
+                    {isAdmin && (
+                      <>
+                        <Link href="/admin/data" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <Database size={16} /> Full Data
+                        </Link>
+                        <Link href="/admin/assignments" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <Target size={16} /> Assignments
+                        </Link>
+                        <Link href="/upload" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <UploadCloud size={16} /> Upload Data
+                        </Link>
+                        <div style={{ height: '1px', background: 'var(--surface-border)', margin: '4px 0' }}></div>
+                      </>
+                    )}
+
+                    <button 
+                      onClick={() => { setIsNavMenuOpen(false); setIsPasswordModalOpen(true); }}
+                      style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', color: 'var(--foreground)' }}
+                      onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <Lock size={16} /> Change Password
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        await signOut({ redirect: false });
+                        router.push('/login');
+                      }}
+                      style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', color: 'var(--danger)' }}
+                      onMouseOver={(e) => e.currentTarget.style.background = '#fef2f2'}
+                      onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <LogOut size={16} /> Sign Out
+                    </button>
                   </div>
-                  <button 
-                    onClick={() => { setIsUserDropdownOpen(false); setIsPasswordModalOpen(true); }}
-                    style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', color: 'var(--foreground)' }}
-                    onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                    onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <Lock size={16} /> Change Password
-                  </button>
-                  <button 
-                    onClick={() => signOut()}
-                    style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', width: '100%', color: 'var(--danger)' }}
-                    onMouseOver={(e) => e.currentTarget.style.background = '#fef2f2'}
-                    onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <LogOut size={16} /> Sign Out
-                  </button>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
       <main className="main-content">
         <div className="curved-banner-container">
@@ -437,7 +441,7 @@ export default function Dashboard() {
             <User size={32} />
           </div>
           <div className="profile-info">
-            <h2>Dashboard Overview</h2>
+            <h1 style={{margin: 0, fontSize: '1.8rem', fontWeight: 'bold'}}>Dashboard Overview</h1>
             <div style={{opacity: 0.8, fontSize: '0.9rem', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6}}>
               <div style={{width: 24, height: 24, background: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                 <span style={{color: 'var(--primary)', fontWeight: 'bold', fontSize: 12}}>L</span>
@@ -448,12 +452,16 @@ export default function Dashboard() {
           
           <div className="quick-stats-bar" style={{display: 'flex', gap: '48px', marginLeft: 'auto', background: 'transparent'}}>
             <div className="quick-stat">
-              <span className="quick-stat-label text-white opacity-80" style={{color: 'white', opacity: 0.8}}>Processed</span>
-              <span className="quick-stat-value text-white">{processedCount} <span style={{opacity: 0.7, fontSize: '0.85em'}}>/ {rows.length}</span></span>
+              <span className="quick-stat-label">Processed</span>
+              <span className="quick-stat-value" style={{color: 'var(--foreground)'}}>{processedCount} <span style={{opacity: 0.7, fontSize: '0.85em', color: 'var(--muted)'}}>/ {rows.length}</span></span>
             </div>
             <div className="quick-stat">
-              <span className="quick-stat-label text-white opacity-80" style={{color: 'white', opacity: 0.8}}>Success Rate</span>
-              <span className="quick-stat-value text-white">{rows.length > 0 ? Math.round((successCount / rows.length) * 100) : 0}%</span>
+              <span className="quick-stat-label">Success Rate</span>
+              <span className="quick-stat-value" style={{color: 'var(--foreground)'}}>{rows.length > 0 ? Math.round((successCount / rows.length) * 100) : 0}%</span>
+            </div>
+            <div className="quick-stat">
+              <span className="quick-stat-label">Rate Limited</span>
+              <span className="quick-stat-value text-warning" style={{color: 'var(--warning)'}}>{rateLimitCount}</span>
             </div>
           </div>
         </div>
@@ -517,6 +525,9 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Dashboard Charts */}
+        <DashboardCharts rows={filteredRows} />
+
         {/* Data Table Card */}
         <div className="dashboard-card">
           <div className="card-header" style={{flexWrap: 'wrap', gap: '16px', flexDirection: 'column', alignItems: 'flex-start'}}>
@@ -546,7 +557,7 @@ export default function Dashboard() {
                 style={{padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', background: 'white', flex: '1 1 min-content'}}
               >
                 <option value="all">All Semesters</option>
-                {uniqueSemesters.map(s => <option key={s as string} value={s as string}>Sem {s as string}</option>)}
+                {uniqueSemesters.map(s => <option key={s} value={s}>Sem {s}</option>)}
               </select>
               <select 
                 value={sectionFilter}
@@ -554,7 +565,7 @@ export default function Dashboard() {
                 style={{padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', background: 'white', flex: '1 1 min-content'}}
               >
                 <option value="all">All Sections</option>
-                {uniqueSections.map(s => <option key={s as string} value={s as string}>Sec {s as string}</option>)}
+                {uniqueSections.map(s => <option key={s} value={s}>Sec {s}</option>)}
               </select>
               <button 
                 onClick={() => handleRefresh(rows.map(r => r.rollNumber))} 
@@ -565,39 +576,43 @@ export default function Dashboard() {
                 <RefreshCw size={16} className={isScraping ? 'animate-spin' : ''} /> Refresh All
               </button>
               
-              <div style={{ position: 'relative', flex: '1 1 auto' }}>
-                <button 
-                  onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                  disabled={processedCount === 0}
-                  className="btn btn-primary"
-                  style={{width: '100%', whiteSpace: 'nowrap'}}
-                >
-                  <Download size={16} /> Export Data
-                </button>
-                {isExportMenuOpen && processedCount > 0 && (
-                  <>
-                    <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setIsExportMenuOpen(false)} />
-                    <div className="animate-slide-up" style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: 'white', border: '1px solid var(--surface-border)', borderRadius: 8, boxShadow: 'var(--shadow-md)', minWidth: 200, zIndex: 20, padding: '8px 0', display: 'flex', flexDirection: 'column' }}>
-                      <button 
-                        onClick={handleExport}
-                        style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--foreground)' }}
-                        onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                        onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                      >
-                        Export as CSV
-                      </button>
-                      <button 
-                        onClick={() => { setIsExportMenuOpen(false); setIsGoogleSheetModalOpen(true); }}
-                        style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--foreground)' }}
-                        onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                        onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                      >
-                        Export to Google Sheets
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+              {isAdmin && (
+                <div style={{ position: 'relative', flex: '1 1 auto' }}>
+                  <button 
+                    onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                    disabled={processedCount === 0}
+                    className="btn btn-primary"
+                    style={{width: '100%', whiteSpace: 'nowrap'}}
+                  >
+                    <Download size={16} /> Export Data
+                  </button>
+                  {isExportMenuOpen && processedCount > 0 && (
+                    <>
+                      <div style={{ position: 'fixed', inset: 0, zIndex: 10 }} onClick={() => setIsExportMenuOpen(false)} />
+                      <div className="animate-slide-up" style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, background: 'white', border: '1px solid var(--surface-border)', borderRadius: 8, boxShadow: 'var(--shadow-md)', minWidth: 200, zIndex: 20, padding: '8px 0', display: 'flex', flexDirection: 'column' }}>
+                        <button 
+                          onClick={handleExport}
+                          style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--foreground)' }}
+                          onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          Export as CSV
+                        </button>
+                        <a 
+                          href="/api/admin/submissions/export"
+                          download
+                          onClick={() => setIsExportMenuOpen(false)}
+                          style={{ padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--foreground)', textDecoration: 'none', display: 'block' }}
+                          onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                          onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                        >
+                          Export All Solved Questions
+                        </a>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               {isAdmin && (
                 <button 
@@ -613,8 +628,8 @@ export default function Dashboard() {
             </div>
 
             {isAdmin && (
-              <div style={{display: 'flex', gap: '16px', marginTop: '16px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--surface-border)', alignItems: 'center'}}>
-                <span style={{fontSize: '0.9rem', fontWeight: 600}}>{selectedStudents.length} students selected</span>
+              <div style={{display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '16px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--surface-border)', alignItems: 'center'}}>
+                <span style={{fontSize: '0.9rem', fontWeight: 600, minWidth: 'max-content'}}>{selectedStudents.length} students selected</span>
                 <select 
                   value={selectedUserIdToAssign}
                   onChange={e => setSelectedUserIdToAssign(e.target.value)}
@@ -633,7 +648,7 @@ export default function Dashboard() {
                 >
                   Assign to User
                 </button>
-                <Link href="/admin/users" className="btn btn-outline" style={{padding: '8px 16px', fontSize: '0.9rem', marginLeft: 'auto'}}>
+                <Link href="/admin/users" className="btn btn-outline" style={{padding: '8px 16px', fontSize: '0.9rem', flex: '1 1 auto', textAlign: 'center'}}>
                   Manage Users
                 </Link>
               </div>
@@ -784,7 +799,7 @@ export default function Dashboard() {
                 </div>
                 <div className="profile-info">
                   <h2>{selectedStudent.name}</h2>
-                  <div style={{opacity: 0.95, fontSize: '0.85rem', marginTop: 8, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px'}}>
+                  <div style={{opacity: 0.95, fontSize: '0.85rem', marginTop: 8, display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '8px'}}>
                     <div style={{background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: '100px', display: 'flex', alignItems: 'center', gap: 6}}>
                       <div style={{width: 16, height: 16, background: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                         <span style={{color: 'var(--primary)', fontWeight: 'bold', fontSize: 10}}>L</span>
@@ -813,7 +828,7 @@ export default function Dashboard() {
                     )}
                   </div>
                 </div>
-                <div className="quick-stats-bar" style={{display: 'flex', gap: '12px', marginLeft: 'auto', marginRight: '16px', marginTop: '-16px', background: 'transparent', alignItems: 'center'}}>
+                <div style={{position: 'absolute', top: 16, right: 16, display: 'flex', gap: '8px', zIndex: 10}}>
                   <button 
                     onClick={() => handleRefresh([selectedStudent.rollNumber])}
                     disabled={isScraping}
@@ -874,6 +889,54 @@ export default function Dashboard() {
                   </div>
                 </div>
 
+                <div className="dashboard-card" style={{ margin: '0 0 24px 0' }}>
+                  <div className="card-header">
+                    <h3 className="card-title">Assigned Questions</h3>
+                  </div>
+                  {isLoadingAssignments ? (
+                    <div style={{ padding: '24px' }}>
+                      <div className="skeleton-row" style={{ width: '100%', marginBottom: '12px' }}></div>
+                      <div className="skeleton-row" style={{ width: '80%', marginBottom: '12px' }}></div>
+                      <div className="skeleton-row" style={{ width: '90%' }}></div>
+                    </div>
+                  ) : assignedQuestions.length > 0 ? (
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th style={{padding: '12px 16px'}}>Question</th>
+                          <th style={{padding: '12px 16px'}}>Status</th>
+                          <th style={{padding: '12px 16px', textAlign: 'right'}}>Completed At</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {assignedQuestions.map((qa: any) => (
+                          <tr key={qa.id}>
+                            <td style={{padding: '12px 16px', fontWeight: 500}}>
+                              <a href={`https://leetcode.com/problems/${qa.assignment.titleSlug}/`} target="_blank" rel="noreferrer" style={{color: 'var(--primary)', textDecoration: 'none'}}>
+                                {qa.assignment.title}
+                              </a>
+                            </td>
+                            <td style={{padding: '12px 16px'}}>
+                              <span style={{
+                                padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600,
+                                color: qa.status === 'completed' ? '#10b981' : '#f59e0b',
+                                backgroundColor: qa.status === 'completed' ? '#ecfdf5' : '#fffbeb'
+                              }}>
+                                {qa.status === 'completed' ? 'Done' : 'Pending'}
+                              </span>
+                            </td>
+                            <td style={{padding: '12px 16px', textAlign: 'right', color: 'var(--text-muted)'}}>
+                              {qa.completedAt ? new Date(qa.completedAt).toLocaleString() : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="p-8 text-center text-muted">No questions assigned to this student.</div>
+                  )}
+                </div>
+
                 <div className="dashboard-card" style={{ margin: 0 }}>
                   <div className="card-header">
                     <h3 className="card-title">Recent Submissions (Accepted)</h3>
@@ -884,7 +947,11 @@ export default function Dashboard() {
                     )}
                   </div>
                   {isLoadingSubmissions ? (
-                    <div className="p-8 text-center text-muted"><RotateCw className="animate-spin" size={24} style={{margin: '0 auto'}} /></div>
+                    <div style={{ padding: '24px' }}>
+                      <div className="skeleton-row" style={{ width: '100%', marginBottom: '12px' }}></div>
+                      <div className="skeleton-row" style={{ width: '85%', marginBottom: '12px' }}></div>
+                      <div className="skeleton-row" style={{ width: '95%' }}></div>
+                    </div>
                   ) : recentSubmissions.length > 0 ? (
                     <table className="data-table">
                       <thead>
@@ -965,60 +1032,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Google Sheets Modal */}
-      {isGoogleSheetModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div className="dashboard-card animate-fade-in" style={{ width: '100%', maxWidth: 500, margin: 0 }}>
-            <div className="card-header border-b border-surface-border">
-              <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <img src="https://upload.wikimedia.org/wikipedia/commons/3/30/Google_Sheets_logo_%282014-2020%29.svg" alt="Sheets" style={{width: 20, height: 20}} />
-                Export to Google Sheets
-              </h3>
-              <button onClick={() => setIsGoogleSheetModalOpen(false)} className="icon-btn" style={{marginRight: -8}}><X size={20} /></button>
-            </div>
-            <div className="card-body">
-              <form onSubmit={handleGoogleSheetsExport}>
-                <p className="text-sm text-muted mb-6">
-                  Enter your Google Spreadsheet ID to sync the processed data. The server must be configured with a valid Google Service Account in the environment variables.
-                </p>
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', fontWeight: 500 }}>Spreadsheet ID</label>
-                  <input 
-                    type="text" 
-                    value={googleSheetId} 
-                    onChange={e => {
-                      const val = e.target.value;
-                      const match = val.match(/[-\w]{25,}/);
-                      setGoogleSheetId(match ? match[0] : val);
-                    }}
-                    placeholder="e.g. 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms"
-                    required
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 6, outline: 'none', fontFamily: 'monospace', fontSize: '0.85rem' }}
-                  />
-                  <p style={{fontSize: '0.75rem', marginTop: 4, color: 'var(--muted)'}}>Found in the URL: docs.google.com/spreadsheets/d/<strong>[SPREADSHEET_ID]</strong>/edit</p>
-                </div>
-                <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: 'block', marginBottom: 8, fontSize: '0.9rem', fontWeight: 500 }}>Sheet Name</label>
-                  <input 
-                    type="text" 
-                    value={googleSheetName} 
-                    onChange={e => setGoogleSheetName(e.target.value)}
-                    placeholder="Sheet1"
-                    required
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 6, outline: 'none' }}
-                  />
-                </div>
-                <div className="flex justify-end gap-3">
-                  <button type="button" onClick={() => setIsGoogleSheetModalOpen(false)} className="btn btn-outline">Cancel</button>
-                  <button type="submit" disabled={isExportingToSheets} className="btn btn-primary" style={{ background: '#0F9D58', borderColor: '#0F9D58' }}>
-                    {isExportingToSheets ? <RotateCw size={16} className="animate-spin" /> : 'Start Export'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

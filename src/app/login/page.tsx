@@ -3,7 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, User } from "lucide-react";
+import { Lock, User, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -82,7 +82,11 @@ export default function LoginPage() {
             disabled={loading}
             style={{ width: '100%', padding: '12px', marginTop: '8px' }}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+                <Loader2 size={18} className="animate-spin" /> Signing in...
+              </span>
+            ) : 'Sign In'}
           </button>
           
           <button 

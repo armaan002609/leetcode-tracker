@@ -24,7 +24,6 @@ export async function GET() {
     const students = await prisma.student.findMany({
       where: isAdmin ? undefined : { assignedUserId: userId || "missing-id" },
       orderBy: [
-        { section: 'asc' },
         { rollNumber: 'asc' },
         { name: 'asc' }
       ]

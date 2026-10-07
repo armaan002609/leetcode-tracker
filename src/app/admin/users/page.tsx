@@ -163,7 +163,12 @@ export default function UserManagementPage() {
   };
 
   if (loading || status === "loading") {
-    return <div className="p-8 text-center">Loading...</div>;
+    return (
+      <div className="enterprise-loader-wrapper">
+        <div className="pulse-logo">L</div>
+        <div className="loader-text">Loading User Management...</div>
+      </div>
+    );
   }
 
   return (
@@ -323,7 +328,11 @@ export default function UserManagementPage() {
 
             <div style={{maxHeight: '400px', overflowY: 'auto'}}>
               {isStudentsLoading ? (
-                <div className="p-8 text-center text-muted">Loading students...</div>
+                <div style={{ padding: '24px' }}>
+                  <div className="skeleton-row" style={{ width: '100%', marginBottom: '12px' }}></div>
+                  <div className="skeleton-row" style={{ width: '80%', marginBottom: '12px' }}></div>
+                  <div className="skeleton-row" style={{ width: '90%' }}></div>
+                </div>
               ) : assignedStudents.length === 0 ? (
                 <div className="p-8 text-center text-muted">No students assigned to this user.</div>
               ) : (
