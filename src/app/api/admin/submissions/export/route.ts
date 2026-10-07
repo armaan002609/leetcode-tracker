@@ -10,16 +10,34 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch all submissions with student details
-    const submissions = await prisma.submission.findMany({
-      include: {
-        student: true
-      },
-      orderBy: [
-        { student: { rollNumber: 'asc' } },
-        { timestamp: 'desc' }
-      ]
-    });
+    const students = await prisma.student.findMany({ orderBy: { rollNumber: 'asc' } });
+    const submissions = await prisma.submission.findMany({ orderBy: { timestamp: 'desc' } });
+
+    const uniqueQuestionsMap = new Map<string, string>();
+    const studentSubmissions = new Map<string, Map<string, Date>>();
+
+    for (const sub of submissions) {
+      if (!uniqueQuestionsMap.has(sub.titleSlug)) {
+        uniqueQuestionsMap.set(sub.titleSlug, sub.title);
+      }
+      
+      let sMap = studentSubmissions.get(sub.studentId);
+      if (!sMap) {
+        sMap = new Map();
+        studentSubmissions.set(sub.studentId, sMap);
+      }
+      if (!sMap.has(sub.titleSlug)) {
+        sMap.set(sub.titleSlug, sub.timestamp);
+      }
+    }
+
+    const uniqueQuestionSlugs = Array.from(uniqueQuestionsMap.keys()).sort();
+
+    const headers = [
+      'Roll Number', 'Name', 'Branch', 'Semester', 'Section', 'Mentor', 'URL',
+      'Total Solved', 'Easy Solved', 'Medium Solved', 'Hard Solved', 'Global Rank',
+      ...uniqueQuestionSlugs.map(slug => uniqueQuestionsMap.get(slug) || slug)
+    ];
 
     const formatDate = (date: Date) => {
       return new Intl.DateTimeFormat('en-IN', {
@@ -30,24 +48,30 @@ export async function GET() {
       }).format(date);
     };
 
-    const headers = [
-      'Roll Number', 'Name', 'Branch', 'Semester', 'Section', 'Mentor', 
-      'Question Title', 'Question Slug', 'Completed At'
-    ];
-    
-    const rows = submissions.map(sub => {
-      const s = sub.student;
-      return [
+    const rows = students.map(s => {
+      const sMap = studentSubmissions.get(s.id) || new Map();
+
+      const baseRow = [
         s.rollNumber,
         s.name,
         s.branch || '',
         s.semester || '',
         s.section || '',
         s.mentor || '',
-        sub.title,
-        sub.titleSlug,
-        formatDate(new Date(sub.timestamp))
+        s.url || '',
+        s.totalSolved?.toString() || '0',
+        s.easySolved?.toString() || '0',
+        s.mediumSolved?.toString() || '0',
+        s.hardSolved?.toString() || '0',
+        s.globalRank?.toString() || '0'
       ];
+
+      const questionCells = uniqueQuestionSlugs.map(slug => {
+        const timestamp = sMap.get(slug);
+        return timestamp ? `Completed (${formatDate(new Date(timestamp))})` : 'Pending';
+      });
+
+      return [...baseRow, ...questionCells];
     });
 
     const csvContent = [
@@ -58,7 +82,7 @@ export async function GET() {
     return new NextResponse(csvContent, {
       headers: {
         'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="all_solved_questions_report.csv"`
+        'Content-Disposition': `attachment; filename="all_solved_questions_pivot_report.csv"`
       }
     });
   } catch (error: any) {
