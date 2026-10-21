@@ -578,6 +578,337 @@ button {
   background: var(--surface-hover);
 }
 
+/* Table Header & Controls Bar */
+.table-header-bar {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--surface-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: #ffffff;
+}
+
+.table-header-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.table-count-badge {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.table-filter-tag {
+  color: var(--primary);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.table-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Inline Search Box */
+.table-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 260px;
+}
+
+.table-search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.table-search-input {
+  width: 100%;
+  padding: 8px 32px 8px 34px;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  color: var(--foreground);
+  background: var(--muted-background);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.table-search-input:focus {
+  background: white;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(164, 14, 25, 0.08);
+}
+
+.table-search-clear {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+/* Filter Bar */
+.table-filter-bar {
+  padding: 12px 22px;
+  background: #fbfcfd;
+  border-bottom: 1px solid var(--surface-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.filter-pill-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filter-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+.filter-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.filter-select {
+  border: none;
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--foreground);
+  outline: none;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.filter-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.filter-reset-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* Floating Bulk Action Bar */
+.bulk-actions-bar {
+  padding: 12px 22px;
+  background: #f0fdf4;
+  border-bottom: 1px solid #bbf7d0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.bulk-actions-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bulk-badge {
+  background: #10b981;
+  color: white;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+
+.bulk-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #166534;
+}
+
+.bulk-actions-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bulk-select {
+  padding: 6px 10px;
+  border: 1px solid #86efac;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  background: white;
+  outline: none;
+}
+
+.bulk-btn {
+  padding: 6px 14px;
+  font-size: 0.82rem;
+}
+
+.bulk-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  font-size: 0.82rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 6px 8px;
+}
+
+.bulk-clear-btn:hover {
+  color: var(--foreground);
+}
+
+/* Student Row Enhancements */
+.student-name-link {
+  font-weight: 600;
+  color: var(--foreground);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.student-name-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.roll-number-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cohort-tag {
+  display: inline-block;
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.mentor-cell {
+  max-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.82rem;
+}
+
+.today-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.total-solved-pill {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--foreground);
+}
+
+.diff-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.diff-pill.easy {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.diff-pill.medium {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.diff-pill.hard {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.row-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+.row-action-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.row-action-btn:hover {
+  background: var(--surface-hover);
+  color: var(--foreground);
+  border-color: var(--surface-border);
+}
+
+.row-action-btn.primary:hover {
+  background: rgba(164, 14, 25, 0.08);
+  color: var(--primary);
+  border-color: rgba(164, 14, 25, 0.2);
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;

@@ -6,7 +6,8 @@ import {
   CheckCircle2, Clock, Lock, HelpCircle, 
   AlertTriangle, RotateCw, Download, Search, AlertCircle,
   Menu, User, Grid, Home, ArrowLeft, Target, Activity, Award, UploadCloud, RefreshCw, Trash2, X, LogIn, LogOut, Database,
-  Users, Flame, TrendingUp, Sparkles, Building2
+  Users, Flame, TrendingUp, Sparkles, Building2,
+  ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, RotateCcw
 } from "lucide-react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
@@ -255,14 +256,49 @@ export default function Dashboard() {
   const activeTodayCount = useMemo(() => rows.filter(r => (r.solvedToday || 0) > 0).length, [rows]);
   const syncSuccessRate = useMemo(() => rows.length > 0 ? ((successCount / rows.length) * 100).toFixed(1) : "0", [rows, successCount]);
 
+  // Clean repeated consecutive words in student names (e.g. "Vishwakarma Vishwakarma" -> "Vishwakarma")
+  const cleanStudentName = (name: string) => {
+    if (!name) return '—';
+    const parts = name.trim().split(/\s+/);
+    const filtered: string[] = [];
+    for (let i = 0; i < parts.length; i++) {
+      if (i === 0 || parts[i].toLowerCase() !== parts[i - 1].toLowerCase()) {
+        filtered.push(parts[i]);
+      }
+    }
+    return filtered.join(' ');
+  };
+
+  // Sorting state
+  type SortField = 'rollNumber' | 'name' | 'branch' | 'semester' | 'section' | 'mentor' | 'solvedToday' | 'totalSolved' | 'easySolved' | 'mediumSolved' | 'hardSolved' | 'globalRank' | 'status';
+  const [sortField, setSortField] = useState<SortField>('totalSolved');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      if (['totalSolved', 'solvedToday', 'easySolved', 'mediumSolved', 'hardSolved', 'globalRank'].includes(field)) {
+        setSortDirection('desc');
+      } else {
+        setSortDirection('asc');
+      }
+    }
+  };
+
   const uniqueBranches = useMemo(() => Array.from(new Set(rows.map(r => r.branch).filter(Boolean))).sort(), [rows]);
   const uniqueSemesters = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
   const uniqueSections = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
 
   const filteredRows = useMemo(() => {
     return rows.filter(r => {
-      const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            r.rollNumber.toLowerCase().includes(searchTerm.toLowerCase());
+      const term = searchTerm.toLowerCase().trim();
+      const matchesSearch = !term || 
+                            r.name?.toLowerCase().includes(term) || 
+                            r.rollNumber?.toLowerCase().includes(term) ||
+                            (r.mentor && r.mentor.toLowerCase().includes(term)) ||
+                            (r.branch && r.branch.toLowerCase().includes(term));
       const matchesStatus = statusFilter === 'all' || 
                             (statusFilter === 'success' && (r.status === 'success' || r.status === 'partial_success')) ||
                             (statusFilter === 'failed' && ['timeout', 'unknown_error', 'not_found', 'invalid_url'].includes(r.status)) ||
@@ -275,17 +311,37 @@ export default function Dashboard() {
     });
   }, [rows, searchTerm, statusFilter, branchFilter, sectionFilter, semesterFilter]);
 
-  // Reset to page 1 when any filter changes
+  const sortedRows = useMemo(() => {
+    const sorted = [...filteredRows];
+    sorted.sort((a, b) => {
+      let aVal = a[sortField];
+      let bVal = b[sortField];
+
+      if (aVal === null || aVal === undefined) aVal = (typeof bVal === 'number') ? -Infinity : '';
+      if (bVal === null || bVal === undefined) bVal = (typeof aVal === 'number') ? -Infinity : '';
+
+      if (typeof aVal === 'string') {
+        const comp = aVal.localeCompare(bVal as string);
+        return sortDirection === 'asc' ? comp : -comp;
+      } else {
+        const comp = (aVal as number) - (bVal as number);
+        return sortDirection === 'asc' ? comp : -comp;
+      }
+    });
+    return sorted;
+  }, [filteredRows, sortField, sortDirection]);
+
+  // Reset to page 1 when any filter or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, branchFilter, sectionFilter, semesterFilter]);
+  }, [searchTerm, statusFilter, branchFilter, sectionFilter, semesterFilter, sortField, sortDirection]);
 
   const paginatedRows = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return filteredRows.slice(startIndex, startIndex + itemsPerPage);
-  }, [filteredRows, currentPage, itemsPerPage]);
+    return sortedRows.slice(startIndex, startIndex + itemsPerPage);
+  }, [sortedRows, currentPage, itemsPerPage]);
 
-  const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedRows.length / itemsPerPage);
 
   const selectedStudent = useMemo(() => rows.find(r => r.id === selectedStudentId), [rows, selectedStudentId]);
 
@@ -578,61 +634,60 @@ export default function Dashboard() {
 
         {/* Data Table Card */}
         <div className="dashboard-card">
-          <div className="card-header" style={{flexWrap: 'wrap', gap: '16px', flexDirection: 'column', alignItems: 'flex-start'}}>
-            <h3 className="card-title" style={{marginBottom: '16px'}}>Scraper Results</h3>
-            <div className="table-actions" style={{width: '100%', display: 'flex', gap: '16px', flexWrap: 'wrap'}}>
-              <select 
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                style={{padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', background: 'white', flex: '1 1 min-content'}}
-              >
-                <option value="all">All Statuses</option>
-                <option value="success">Success & Partial</option>
-                <option value="failed">Failed & Errors</option>
-                <option value="pending">Pending</option>
-              </select>
-              <select 
-                value={branchFilter}
-                onChange={e => setBranchFilter(e.target.value)}
-                style={{padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', background: 'white', flex: '1 1 min-content'}}
-              >
-                <option value="all">All Branches</option>
-                {uniqueBranches.map(b => <option key={b as string} value={b as string}>{b as string}</option>)}
-              </select>
-              <select 
-                value={semesterFilter}
-                onChange={e => setSemesterFilter(e.target.value)}
-                style={{padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', background: 'white', flex: '1 1 min-content'}}
-              >
-                <option value="all">All Semesters</option>
-                {uniqueSemesters.map(s => <option key={s} value={s}>Sem {s}</option>)}
-              </select>
-              <select 
-                value={sectionFilter}
-                onChange={e => setSectionFilter(e.target.value)}
-                style={{padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', background: 'white', flex: '1 1 min-content'}}
-              >
-                <option value="all">All Sections</option>
-                {uniqueSections.map(s => <option key={s} value={s}>Sec {s}</option>)}
-              </select>
+          {/* Table Header: Title + Inline Search + Action Buttons */}
+          <div className="table-header-bar">
+            <div className="table-header-title-group">
+              <h3 className="card-title" style={{ margin: 0 }}>Student Scraper Roster</h3>
+              <div className="table-count-badge">
+                Showing <strong>{sortedRows.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}-{Math.min(currentPage * itemsPerPage, sortedRows.length)}</strong> of <strong>{sortedRows.length}</strong> students
+                {sortedRows.length !== rows.length && (
+                  <span className="table-filter-tag">(filtered from {rows.length})</span>
+                )}
+              </div>
+            </div>
+
+            <div className="table-header-controls">
+              {/* Inline Search Input */}
+              <div className="table-search-box">
+                <Search size={15} className="table-search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search name, roll no, mentor..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="table-search-input"
+                />
+                {searchTerm && (
+                  <button 
+                    type="button" 
+                    onClick={() => setSearchTerm('')} 
+                    className="table-search-clear"
+                    title="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Action Buttons: Refresh, Export, Clear */}
               <button 
                 onClick={() => handleRefresh(rows.map(r => r.rollNumber))} 
                 disabled={isScraping || rows.length === 0}
                 className="btn btn-outline"
-                style={{flex: '1 1 auto', whiteSpace: 'nowrap'}}
+                title="Refresh scraping for all students"
               >
-                <RefreshCw size={16} className={isScraping ? 'animate-spin' : ''} /> Refresh All
+                <RefreshCw size={15} className={isScraping ? 'animate-spin' : ''} /> 
+                <span>Refresh All</span>
               </button>
-              
+
               {isAdmin && (
-                <div style={{ position: 'relative', flex: '1 1 auto' }}>
+                <div style={{ position: 'relative' }}>
                   <button 
                     onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
                     disabled={processedCount === 0}
                     className="btn btn-primary"
-                    style={{width: '100%', whiteSpace: 'nowrap'}}
                   >
-                    <Download size={16} /> Export Data
+                    <Download size={15} /> <span>Export Data</span>
                   </button>
                   {isExportMenuOpen && processedCount > 0 && (
                     <>
@@ -644,7 +699,7 @@ export default function Dashboard() {
                           onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
                           onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
                         >
-                          Export as CSV
+                          Export Table as CSV
                         </button>
                         <a 
                           href="/api/admin/submissions/export"
@@ -667,71 +722,286 @@ export default function Dashboard() {
                   onClick={handleClearData}
                   disabled={rows.length === 0}
                   className="btn btn-outline"
-                  style={{flex: '1 1 auto', whiteSpace: 'nowrap', borderColor: 'var(--danger)', color: 'var(--danger)'}}
+                  style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: 'var(--danger)' }}
                   title="Delete all uploaded data"
                 >
-                  <Trash2 size={16} /> Clear Data
+                  <Trash2 size={15} /> <span>Clear Data</span>
                 </button>
               )}
             </div>
+          </div>
 
-            {isAdmin && (
-              <div style={{display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '16px', padding: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--surface-border)', alignItems: 'center'}}>
-                <span style={{fontSize: '0.9rem', fontWeight: 600, minWidth: 'max-content'}}>{selectedStudents.length} students selected</span>
+          {/* Filter Chips Bar */}
+          <div className="table-filter-bar">
+            <div className="filter-pill-group">
+              <div className="filter-select-wrapper">
+                <span className="filter-label">Status:</span>
+                <select 
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="success">Success & Partial</option>
+                  <option value="failed">Failed & Errors</option>
+                  <option value="pending">Pending</option>
+                </select>
+              </div>
+
+              <div className="filter-select-wrapper">
+                <span className="filter-label">Branch:</span>
+                <select 
+                  value={branchFilter}
+                  onChange={e => setBranchFilter(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Branches</option>
+                  {uniqueBranches.map(b => <option key={b as string} value={b as string}>{b as string}</option>)}
+                </select>
+              </div>
+
+              <div className="filter-select-wrapper">
+                <span className="filter-label">Semester:</span>
+                <select 
+                  value={semesterFilter}
+                  onChange={e => setSemesterFilter(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Semesters</option>
+                  {uniqueSemesters.map(s => <option key={s} value={s}>Sem {s}</option>)}
+                </select>
+              </div>
+
+              <div className="filter-select-wrapper">
+                <span className="filter-label">Section:</span>
+                <select 
+                  value={sectionFilter}
+                  onChange={e => setSectionFilter(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Sections</option>
+                  {uniqueSections.map(s => <option key={s} value={s}>Sec {s}</option>)}
+                </select>
+              </div>
+
+              {/* Clear Filters Button (shown only when any filter or search is active) */}
+              {(statusFilter !== 'all' || branchFilter !== 'all' || semesterFilter !== 'all' || sectionFilter !== 'all' || searchTerm !== '') && (
+                <button
+                  onClick={() => {
+                    setStatusFilter('all');
+                    setBranchFilter('all');
+                    setSemesterFilter('all');
+                    setSectionFilter('all');
+                    setSearchTerm('');
+                  }}
+                  className="filter-reset-btn"
+                  title="Reset all filters"
+                >
+                  <RotateCcw size={13} /> Reset Filters
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Active Bulk Actions Bar (Only visible when >= 1 student is selected) */}
+          {isAdmin && selectedStudents.length > 0 && (
+            <div className="bulk-actions-bar animate-fade-in">
+              <div className="bulk-actions-info">
+                <span className="bulk-badge">{selectedStudents.length}</span>
+                <span className="bulk-text">students selected</span>
+              </div>
+
+              <div className="bulk-actions-controls">
                 <select 
                   value={selectedUserIdToAssign}
                   onChange={e => setSelectedUserIdToAssign(e.target.value)}
-                  style={{padding: '8px 12px', border: '1px solid var(--surface-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.9rem', outline: 'none', background: 'white'}}
+                  className="bulk-select"
                 >
                   <option value="">Select Sub-User to Assign...</option>
                   {users.map(u => (
                     <option key={u.id} value={u.id}>{u.username} ({u.role})</option>
                   ))}
                 </select>
+
                 <button 
                   onClick={handleAssignStudents}
-                  className="btn btn-primary"
-                  disabled={selectedStudents.length === 0 || !selectedUserIdToAssign}
-                  style={{padding: '8px 16px', fontSize: '0.9rem'}}
+                  className="btn btn-primary bulk-btn"
+                  disabled={!selectedUserIdToAssign}
                 >
                   Assign to User
                 </button>
-                <Link href="/admin/users" className="btn btn-outline" style={{padding: '8px 16px', fontSize: '0.9rem', flex: '1 1 auto', textAlign: 'center'}}>
-                  Manage Users
-                </Link>
+
+                <button
+                  onClick={() => handleRefresh(selectedStudents)}
+                  disabled={isScraping}
+                  className="btn btn-outline bulk-btn"
+                  title="Refresh scrape for selected students only"
+                >
+                  <RefreshCw size={14} className={isScraping ? 'animate-spin' : ''} />
+                  <span>Refresh Selected</span>
+                </button>
+
+                <button 
+                  onClick={() => setSelectedStudents([])}
+                  className="bulk-clear-btn"
+                  title="Deselect all"
+                >
+                  <X size={15} /> Deselect
+                </button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
           
           <div className="data-table-wrapper">
             <table className="data-table">
               <thead>
                 <tr>
                   {isAdmin && (
-                    <th>
+                    <th style={{ width: '40px' }}>
                       <input 
                         type="checkbox" 
                         onChange={(e) => setSelectedStudents(e.target.checked ? paginatedRows.map(r => r.rollNumber) : [])}
                         checked={paginatedRows.length > 0 && selectedStudents.length === paginatedRows.length}
-                        style={{cursor: 'pointer'}}
+                        style={{ cursor: 'pointer' }}
                       />
                     </th>
                   )}
-                  <th>Status</th>
-                  <th>Roll No</th>
-                  <th>Name</th>
-                  <th>Branch</th>
-                  <th>Semester</th>
-                  <th>Section</th>
-                  <th>Mentor</th>
-                  <th className="text-right">Solved Today</th>
-                  <th className="text-right">Total Solved</th>
-                  <th className="text-right">Easy</th>
-                  <th className="text-right">Medium</th>
-                  <th className="text-right">Hard</th>
-                  <th className="text-right">Global Rank</th>
-                  <th className="text-right">Badges</th>
-                  <th>Action</th>
+                  <th onClick={() => handleSort('status')} style={{ cursor: 'pointer', minWidth: '95px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Status 
+                      {sortField === 'status' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('rollNumber')} style={{ cursor: 'pointer', minWidth: '100px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Roll No 
+                      {sortField === 'rollNumber' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', minWidth: '160px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Name 
+                      {sortField === 'name' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('branch')} style={{ cursor: 'pointer', minWidth: '90px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Branch 
+                      {sortField === 'branch' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('semester')} style={{ cursor: 'pointer', minWidth: '65px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Sem 
+                      {sortField === 'semester' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('section')} style={{ cursor: 'pointer', minWidth: '55px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Sec 
+                      {sortField === 'section' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('mentor')} style={{ cursor: 'pointer', minWidth: '130px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      Mentor 
+                      {sortField === 'mentor' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('solvedToday')} className="text-right" style={{ cursor: 'pointer', minWidth: '95px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, width: '100%' }}>
+                      Today 
+                      {sortField === 'solvedToday' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('totalSolved')} className="text-right" style={{ cursor: 'pointer', minWidth: '110px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, width: '100%' }}>
+                      Total Solved 
+                      {sortField === 'totalSolved' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('easySolved')} className="text-right" style={{ cursor: 'pointer', minWidth: '65px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, width: '100%' }}>
+                      Easy 
+                      {sortField === 'easySolved' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('mediumSolved')} className="text-right" style={{ cursor: 'pointer', minWidth: '65px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, width: '100%' }}>
+                      Med 
+                      {sortField === 'mediumSolved' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('hardSolved')} className="text-right" style={{ cursor: 'pointer', minWidth: '65px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, width: '100%' }}>
+                      Hard 
+                      {sortField === 'hardSolved' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th onClick={() => handleSort('globalRank')} className="text-right" style={{ cursor: 'pointer', minWidth: '110px', userSelect: 'none' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, width: '100%' }}>
+                      Global Rank 
+                      {sortField === 'globalRank' ? (
+                        sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                      ) : (
+                        <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                      )}
+                    </div>
+                  </th>
+                  <th className="text-right" style={{ minWidth: '65px' }}>
+                    Badges
+                  </th>
+                  <th className="text-center" style={{ minWidth: '85px' }}>
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -740,54 +1010,105 @@ export default function Dashboard() {
                   const isSelected = row.id === selectedStudentId;
                   
                   return (
-                    <tr key={row.id} style={{opacity: isPending ? 0.6 : 1, background: isSelected ? 'var(--surface-hover)' : 'transparent'}}>
+                    <tr key={row.id} style={{ opacity: isPending ? 0.6 : 1, background: isSelected ? 'var(--surface-hover)' : 'transparent' }}>
                       {isAdmin && (
                         <td>
                           <input 
                             type="checkbox" 
                             checked={selectedStudents.includes(row.rollNumber)}
                             onChange={() => handleToggleSelectStudent(row.rollNumber)}
-                            style={{cursor: 'pointer'}}
+                            style={{ cursor: 'pointer' }}
                           />
                         </td>
                       )}
                       <td><StatusIcon status={row.status} /></td>
-                      <td className="font-medium">{row.rollNumber}</td>
-                      <td 
-                        onClick={() => setSelectedStudentId(isSelected ? null : row.id)}
-                        style={{color: 'var(--primary)', cursor: 'pointer', fontWeight: 500}}
-                        className="hover:underline"
-                        title="Click to view profile"
-                      >
-                        {row.name}
-                      </td>
-                      <td className="text-muted">{row.branch ?? '-'}</td>
-                      <td className="text-muted">{row.semester ?? '-'}</td>
-                      <td className="text-muted">{row.section ?? '-'}</td>
-                      <td className="text-muted">{row.mentor}</td>
-                      <td className="text-right font-medium">{row.solvedToday ?? '-'}</td>
-                      <td className="text-right font-medium">{row.totalSolved ?? '-'}</td>
-                      <td className="text-right text-green-500 font-medium">{row.easySolved ?? '-'}</td>
-                      <td className="text-right text-yellow-500 font-medium">{row.mediumSolved ?? '-'}</td>
-                      <td className="text-right text-red-500 font-medium">{row.hardSolved ?? '-'}</td>
-                      <td className="text-right">{row.globalRank?.toLocaleString() ?? '-'}</td>
-                      <td className="text-right">{row.badges ?? '-'}</td>
                       <td>
-                        <button 
-                          onClick={() => handleRefresh([row.rollNumber])}
-                          disabled={isScraping}
-                          className="text-primary font-medium"
-                          style={{fontSize: '0.85rem', opacity: isScraping ? 0.5 : 1}}
+                        <span className="roll-number-badge">{row.rollNumber}</span>
+                      </td>
+                      <td>
+                        <span 
+                          onClick={() => setSelectedStudentId(isSelected ? null : row.id)}
+                          className="student-name-link"
+                          title="Click to view student profile"
                         >
-                          Refresh
-                        </button>
+                          {cleanStudentName(row.name)}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="cohort-tag">{row.branch ?? '—'}</span>
+                      </td>
+                      <td>
+                        <span className="cohort-tag">{row.semester ?? '—'}</span>
+                      </td>
+                      <td>
+                        <span className="cohort-tag">{row.section ?? '—'}</span>
+                      </td>
+                      <td>
+                        <div className="mentor-cell" title={row.mentor || '—'}>
+                          {row.mentor || '—'}
+                        </div>
+                      </td>
+                      <td className="text-right">
+                        {(row.solvedToday || 0) > 0 ? (
+                          <span className="today-badge">+{row.solvedToday}</span>
+                        ) : (
+                          <span className="text-muted" style={{ opacity: 0.5 }}>0</span>
+                        )}
+                      </td>
+                      <td className="text-right">
+                        <span className="total-solved-pill">{row.totalSolved ?? 0}</span>
+                      </td>
+                      <td className="text-right">
+                        <span className="diff-pill easy">{row.easySolved ?? 0}</span>
+                      </td>
+                      <td className="text-right">
+                        <span className="diff-pill medium">{row.mediumSolved ?? 0}</span>
+                      </td>
+                      <td className="text-right">
+                        <span className="diff-pill hard">{row.hardSolved ?? 0}</span>
+                      </td>
+                      <td className="text-right" style={{ whiteSpace: 'nowrap' }}>
+                        {row.globalRank ? (
+                          <span style={{ fontWeight: 500, fontSize: '0.85rem' }}>#{row.globalRank.toLocaleString()}</span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="text-right">
+                        {(row.badges || 0) > 0 ? (
+                          <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{row.badges}</span>
+                        ) : (
+                          <span className="text-muted" style={{ opacity: 0.5 }}>0</span>
+                        )}
+                      </td>
+                      <td className="text-center">
+                        <div className="row-actions-group">
+                          <button 
+                            onClick={() => setSelectedStudentId(row.id)}
+                            className="row-action-btn primary"
+                            title="View Student Profile"
+                          >
+                            <User size={14} />
+                          </button>
+                          <button 
+                            onClick={() => handleRefresh([row.rollNumber])}
+                            disabled={isScraping}
+                            className="row-action-btn"
+                            title="Refresh Scrape"
+                            style={{ opacity: isScraping ? 0.5 : 1 }}
+                          >
+                            <RefreshCw size={14} className={isScraping ? 'animate-spin' : ''} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
-                  )
+                  );
                 })}
-                {filteredRows.length === 0 && (
+                {paginatedRows.length === 0 && (
                   <tr>
-                    <td colSpan={15} className="text-center p-8 text-muted">No students found. Upload a roster first!</td>
+                    <td colSpan={16} className="text-center p-8 text-muted">
+                      No students found matching your search or filters.
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -798,7 +1119,7 @@ export default function Dashboard() {
           {totalPages > 1 && (
             <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--surface-border)', background: '#fdfdfd' }}>
               <div className="text-muted text-sm">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredRows.length)} of {filteredRows.length} students
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, sortedRows.length)} of {sortedRows.length} students
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button 
