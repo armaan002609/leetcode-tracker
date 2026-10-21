@@ -135,63 +135,274 @@ button {
   position: relative;
 }
 
-/* Curved Red Banner */
+/* Curved Red Banner - Hidden in favor of clean modern SaaS layout */
 .curved-banner-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 300px;
-  overflow: hidden;
-  z-index: 0;
-  pointer-events: none;
+  display: none !important;
 }
 
-.curved-banner {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 35%;
-  min-width: 450px;
-  height: 240px;
+/* Modern Clean SaaS Dashboard Hero */
+.dashboard-hero {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  position: relative;
+  border-left: 4px solid var(--primary);
+}
+
+.hero-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hero-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(164, 14, 25, 0.08);
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 100px;
+  width: fit-content;
+}
+
+.hero-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   background: var(--primary);
-  border-bottom-right-radius: 200px 180px;
+  animation: pulse-dot 2s infinite ease-in-out;
 }
 
-/* User Profile Banner Block */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.hero-heading {
+  margin: 0;
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: var(--foreground);
+  letter-spacing: -0.02em;
+}
+
+.hero-subheading {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+  max-width: 650px;
+}
+
+.hero-meta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--muted-background);
+  color: var(--foreground);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.hero-chip.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.hero-chip.warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+.hero-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.hero-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+/* Executive KPI Grid & Cards */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.kpi-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+
+.kpi-icon-pill {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpi-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--foreground);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+
+.kpi-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kpi-subtext {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.kpi-ratio-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--surface-border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.kpi-ratio-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.kpi-ratio-fill.emerald {
+  background: #10b981;
+}
+
+.kpi-ratio-fill.blue {
+  background: #3b82f6;
+}
+
+.kpi-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+.kpi-badge-pill.green {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.kpi-badge-pill.amber {
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+/* User Profile Banner Block (used in subpages & modal header) */
 .profile-banner {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: center;
-  padding: 16px 0 48px 16px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, #a40e19 0%, #7d0b13 100%);
   color: white;
   gap: 16px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+  box-shadow: 0 4px 16px rgba(164, 14, 25, 0.15);
 }
 
 .profile-avatar {
-  width: 72px;
-  height: 72px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: white;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-md);
-  color: var(--muted);
+  color: var(--primary);
+  flex-shrink: 0;
 }
 
 .profile-info h2 {
   font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
+  color: white;
 }
 
 .quick-stats-bar {
   display: flex;
-  gap: 48px;
+  gap: 32px;
   margin-left: auto;
-  color: var(--foreground);
+  color: white;
   background: transparent;
 }
 
@@ -201,15 +412,16 @@ button {
 }
 
 .quick-stat-label {
-  font-size: 0.85rem;
-  color: var(--muted);
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.75);
   font-weight: 500;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .quick-stat-value {
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
+  color: white;
 }
 
 .badge {
@@ -635,6 +847,28 @@ button {
 
   .metrics-grid {
     margin-top: 32px;
+  }
+
+  .dashboard-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px 18px;
+    gap: 16px;
+  }
+
+  .hero-right-actions {
+    width: 100%;
+    gap: 10px;
+  }
+
+  .hero-action-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
 
   .table-actions {

@@ -5,7 +5,8 @@ import { generateCsv, downloadCsv } from "@/lib/export/generateCsv";
 import { 
   CheckCircle2, Clock, Lock, HelpCircle, 
   AlertTriangle, RotateCw, Download, Search, AlertCircle,
-  Menu, User, Grid, Home, ArrowLeft, Target, Activity, Award, UploadCloud, RefreshCw, Trash2, X, LogIn, LogOut, Database
+  Menu, User, Grid, Home, ArrowLeft, Target, Activity, Award, UploadCloud, RefreshCw, Trash2, X, LogIn, LogOut, Database,
+  Users, Flame, TrendingUp, Sparkles, Building2
 } from "lucide-react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
@@ -245,6 +246,15 @@ export default function Dashboard() {
   const failCount = rows.filter(r => ['timeout', 'unknown_error', 'not_found', 'invalid_url'].includes(r.status)).length;
   const rateLimitCount = rows.filter(r => r.status === 'rate_limited_retrying').length;
 
+  // Problem-solving & Sync KPI metrics
+  const activeStudentsCount = useMemo(() => rows.filter(r => (r.totalSolved || 0) > 0).length, [rows]);
+  const totalQuestionsSolved = useMemo(() => rows.reduce((acc, r) => acc + (r.totalSolved || 0), 0), [rows]);
+  const avgSolvedPerStudent = useMemo(() => rows.length > 0 ? (totalQuestionsSolved / rows.length).toFixed(1) : "0", [rows, totalQuestionsSolved]);
+  const avgSolvedPerActive = useMemo(() => activeStudentsCount > 0 ? (totalQuestionsSolved / activeStudentsCount).toFixed(1) : "0", [activeStudentsCount, totalQuestionsSolved]);
+  const totalSolvedToday = useMemo(() => rows.reduce((acc, r) => acc + (r.solvedToday || 0), 0), [rows]);
+  const activeTodayCount = useMemo(() => rows.filter(r => (r.solvedToday || 0) > 0).length, [rows]);
+  const syncSuccessRate = useMemo(() => rows.length > 0 ? ((successCount / rows.length) * 100).toFixed(1) : "0", [rows, successCount]);
+
   const uniqueBranches = useMemo(() => Array.from(new Set(rows.map(r => r.branch).filter(Boolean))).sort(), [rows]);
   const uniqueSemesters = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th'];
   const uniqueSections = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
@@ -431,102 +441,140 @@ export default function Dashboard() {
         </nav>
 
       <main className="main-content">
-        <div className="curved-banner-container">
-          <div className="curved-banner"></div>
+        {/* Modern Clean SaaS Hero Header */}
+        <div className="dashboard-hero">
+          <div className="hero-left">
+            <div className="hero-pill-badge">
+              <span className="hero-live-dot" />
+              <span>Persistent Batch Scraper</span>
+            </div>
+            <h1 className="hero-heading">Dashboard Overview</h1>
+            <p className="hero-subheading">
+              Track student problem-solving activity, difficulty breakdown, and batch scraper performance in real time.
+            </p>
+            <div className="hero-meta-chips">
+              <span className="hero-chip">
+                <Users size={14} /> {rows.length} Enrolled
+              </span>
+              <span className="hero-chip">
+                <CheckCircle2 size={14} style={{ color: '#10b981' }} /> {processedCount} / {rows.length} Synced ({syncSuccessRate}%)
+              </span>
+              {rateLimitCount > 0 ? (
+                <span className="hero-chip warning">
+                  <Clock size={14} className="animate-pulse" /> {rateLimitCount} Retrying
+                </span>
+              ) : (
+                <span className="hero-chip success">
+                  <Sparkles size={14} /> Scraper Optimal
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="hero-right-actions">
+            <button
+              onClick={() => handleRefresh(rows.map(r => r.rollNumber))}
+              disabled={isScraping || rows.length === 0}
+              className="btn btn-outline hero-action-btn"
+              title="Trigger background scrape refresh for all students"
+            >
+              <RefreshCw size={16} className={isScraping ? 'animate-spin' : ''} />
+              <span>{isScraping ? 'Scraping...' : 'Refresh All'}</span>
+            </button>
+            <Link href="/analytics" className="btn btn-primary hero-action-btn">
+              <Activity size={16} />
+              <span>Deep Analytics</span>
+            </Link>
+          </div>
         </div>
 
-        {/* Dashboard Overview - Always visible */}
-        <div className="profile-banner">
-          <div className="profile-avatar">
-            <User size={32} />
-          </div>
-          <div className="profile-info">
-            <h1 style={{margin: 0, fontSize: '1.8rem', fontWeight: 'bold'}}>Dashboard Overview</h1>
-            <div style={{opacity: 0.8, fontSize: '0.9rem', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6}}>
-              <div style={{width: 24, height: 24, background: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                <span style={{color: 'var(--primary)', fontWeight: 'bold', fontSize: 12}}>L</span>
-              </div>
-              Persistent Batch Dashboard
-            </div>
-          </div>
-          
-          <div className="quick-stats-bar" style={{display: 'flex', gap: '48px', marginLeft: 'auto', background: 'transparent'}}>
-            <div className="quick-stat">
-              <span className="quick-stat-label">Processed</span>
-              <span className="quick-stat-value" style={{color: 'var(--foreground)'}}>{processedCount} <span style={{opacity: 0.7, fontSize: '0.85em', color: 'var(--muted)'}}>/ {rows.length}</span></span>
-            </div>
-            <div className="quick-stat">
-              <span className="quick-stat-label">Success Rate</span>
-              <span className="quick-stat-value" style={{color: 'var(--foreground)'}}>{rows.length > 0 ? Math.round((successCount / rows.length) * 100) : 0}%</span>
-            </div>
-            <div className="quick-stat">
-              <span className="quick-stat-label">Rate Limited</span>
-              <span className="quick-stat-value text-warning" style={{color: 'var(--warning)'}}>{rateLimitCount}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 4 Metric Cards */}
-        <div className="metrics-grid">
-          <div className="metric-card">
-            <div className="metric-icon-wrapper">
-              <Grid size={24} />
-            </div>
-            <h3 className="metric-title">Total Profiles</h3>
-            <div className="metric-stats">
-              <div className="metric-stat-row">
-                <span>Batch Size</span>
-                <div className="metric-circle blue">{rows.length}</div>
+        {/* 4 Executive KPI Cards (Problem-Solving & Sync Health) */}
+        <div className="kpi-grid">
+          {/* KPI 1: Total Students */}
+          <div className="kpi-card">
+            <div className="kpi-header">
+              <span className="kpi-title">Total Students</span>
+              <div className="kpi-icon-pill" style={{ background: 'rgba(164, 14, 25, 0.08)', color: 'var(--primary)' }}>
+                <Users size={20} />
               </div>
             </div>
-          </div>
-          
-          <div className="metric-card">
-            <div className="metric-icon-wrapper">
-              <RotateCw size={24} />
-            </div>
-            <h3 className="metric-title">Progress</h3>
-            <div className="metric-stats">
-              <div className="metric-stat-row">
-                <span>Processed</span>
-                <div className="metric-circle blue">{processedCount}</div>
+            <div className="kpi-value">{rows.length}</div>
+            <div className="kpi-footer">
+              <div className="kpi-subtext">
+                <span style={{ fontWeight: 600, color: '#059669' }}>{activeStudentsCount} active</span> ({rows.length > 0 ? Math.round((activeStudentsCount / rows.length) * 100) : 0}%) • {rows.length - activeStudentsCount} inactive
               </div>
-              <div className="metric-stat-row">
-                <span>Pending</span>
-                <div className="metric-circle gray">{rows.length - processedCount}</div>
+              <div className="kpi-ratio-bar">
+                <div 
+                  className="kpi-ratio-fill emerald" 
+                  style={{ width: `${rows.length > 0 ? (activeStudentsCount / rows.length) * 100 : 0}%` }} 
+                />
               </div>
             </div>
           </div>
 
-          <div className="metric-card">
-            <div className="metric-icon-wrapper">
-              <CheckCircle2 size={24} />
+          {/* KPI 2: Total Solved Questions */}
+          <div className="kpi-card">
+            <div className="kpi-header">
+              <span className="kpi-title">Total Solved</span>
+              <div className="kpi-icon-pill" style={{ background: 'rgba(16, 185, 129, 0.08)', color: '#10b981' }}>
+                <Award size={20} />
+              </div>
             </div>
-            <h3 className="metric-title">Success</h3>
-            <div className="metric-stats">
-              <div className="metric-stat-row">
-                <span>Successfully Scraped</span>
-                <div className="metric-circle green">{successCount}</div>
+            <div className="kpi-value">{totalQuestionsSolved.toLocaleString()}</div>
+            <div className="kpi-footer">
+              <div className="kpi-subtext">
+                <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>~{avgSolvedPerStudent}</span> avg / student • <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>~{avgSolvedPerActive}</span> / active
+              </div>
+              <div className="kpi-badge-pill green">
+                Across All Difficulties
               </div>
             </div>
           </div>
 
-          <div className="metric-card">
-            <div className="metric-icon-wrapper">
-              <AlertTriangle size={24} />
+          {/* KPI 3: Sync & Scraping Health */}
+          <div className="kpi-card">
+            <div className="kpi-header">
+              <span className="kpi-title">Scrape Health</span>
+              <div className="kpi-icon-pill" style={{ background: 'rgba(59, 130, 246, 0.08)', color: '#3b82f6' }}>
+                <CheckCircle2 size={20} />
+              </div>
             </div>
-            <h3 className="metric-title">Failures</h3>
-            <div className="metric-stats">
-              <div className="metric-stat-row">
-                <span>Errors / Not Found</span>
-                <div className="metric-circle red">{failCount}</div>
+            <div className="kpi-value">{syncSuccessRate}%</div>
+            <div className="kpi-footer">
+              <div className="kpi-subtext">
+                <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{successCount}</span> synced • <span style={{ color: 'var(--danger)', fontWeight: 600 }}>{failCount}</span> errors
+              </div>
+              <div className="kpi-ratio-bar">
+                <div 
+                  className="kpi-ratio-fill blue" 
+                  style={{ width: `${syncSuccessRate}%` }} 
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* KPI 4: 24h Velocity (Solved Today) */}
+          <div className="kpi-card">
+            <div className="kpi-header">
+              <span className="kpi-title">Solved Today</span>
+              <div className="kpi-icon-pill" style={{ background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b' }}>
+                <Flame size={20} />
+              </div>
+            </div>
+            <div className="kpi-value">{totalSolvedToday.toLocaleString()}</div>
+            <div className="kpi-footer">
+              <div className="kpi-subtext">
+                <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{activeTodayCount}</span> students active in last 24h
+              </div>
+              <div className="kpi-badge-pill amber">
+                24h Velocity
               </div>
             </div>
           </div>
         </div>
 
         {/* Dashboard Charts */}
-        <DashboardCharts rows={filteredRows} />
+        <DashboardCharts rows={filteredRows} onSelectStudent={(id) => setSelectedStudentId(id)} />
 
         {/* Data Table Card */}
         <div className="dashboard-card">
