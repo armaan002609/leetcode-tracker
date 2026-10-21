@@ -269,10 +269,10 @@ export default function Dashboard() {
     return filtered.join(' ');
   };
 
-  // Sorting state
+  // Sorting state - default to Roll Number ascending
   type SortField = 'rollNumber' | 'name' | 'branch' | 'semester' | 'section' | 'mentor' | 'solvedToday' | 'totalSolved' | 'easySolved' | 'mediumSolved' | 'hardSolved' | 'globalRank' | 'status';
-  const [sortField, setSortField] = useState<SortField>('totalSolved');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [sortField, setSortField] = useState<SortField>('rollNumber');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -320,8 +320,18 @@ export default function Dashboard() {
       if (aVal === null || aVal === undefined) aVal = (typeof bVal === 'number') ? -Infinity : '';
       if (bVal === null || bVal === undefined) bVal = (typeof aVal === 'number') ? -Infinity : '';
 
+      if (sortField === 'rollNumber') {
+        const numA = parseFloat(String(aVal).replace(/\D/g, ''));
+        const numB = parseFloat(String(bVal).replace(/\D/g, ''));
+        if (!isNaN(numA) && !isNaN(numB) && numA !== numB) {
+          return sortDirection === 'asc' ? numA - numB : numB - numA;
+        }
+        const comp = String(aVal).localeCompare(String(bVal), undefined, { numeric: true });
+        return sortDirection === 'asc' ? comp : -comp;
+      }
+
       if (typeof aVal === 'string') {
-        const comp = aVal.localeCompare(bVal as string);
+        const comp = aVal.localeCompare(bVal as string, undefined, { numeric: true });
         return sortDirection === 'asc' ? comp : -comp;
       } else {
         const comp = (aVal as number) - (bVal as number);
