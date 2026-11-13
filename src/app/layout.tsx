@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+// @ts-ignore
 import { Poppins } from "next/font/google";
 import "./globals.css";
 

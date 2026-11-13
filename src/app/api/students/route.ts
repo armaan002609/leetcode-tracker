@@ -23,6 +23,15 @@ export async function GET() {
 
     const students = await prisma.student.findMany({
       where: isAdmin ? undefined : { assignedUserId: userId || "missing-id" },
+      include: {
+        assignedUser: {
+          select: {
+            id: true,
+            username: true,
+            role: true
+          }
+        }
+      },
       orderBy: [
         { rollNumber: 'asc' },
         { name: 'asc' }

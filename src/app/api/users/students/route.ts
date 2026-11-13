@@ -19,12 +19,16 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
+    const isUnassigned = userId === 'unassigned';
     const students = await prisma.student.findMany({
-      where: { assignedUserId: userId },
+      where: isUnassigned ? { assignedUserId: null } : { assignedUserId: userId },
       select: {
         id: true,
         rollNumber: true,
         name: true,
+        branch: true,
+        section: true,
+        mentor: true
       },
       orderBy: {
         rollNumber: 'asc'

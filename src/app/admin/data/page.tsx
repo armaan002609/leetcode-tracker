@@ -134,8 +134,16 @@ export default function DataExplorer() {
     <div className="min-h-screen bg-[var(--background)]">
       <nav className="topnav">
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <Link href="/admin/assignments" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'white', textDecoration: 'none', fontWeight: 500 }}>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'white', textDecoration: 'none', fontWeight: 500 }}>
             <ChevronLeft size={20} /> Back to Dashboard
+          </Link>
+        </div>
+        <div className="topnav-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Link href="/admin/users" className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '6px 12px', color: 'white', borderColor: 'rgba(255,255,255,0.4)' }}>
+            User Management
+          </Link>
+          <Link href="/admin/assignments" className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '6px 12px', color: 'white', borderColor: 'rgba(255,255,255,0.4)' }}>
+            Assignments
           </Link>
         </div>
       </nav>

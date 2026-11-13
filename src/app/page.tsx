@@ -39,6 +39,7 @@ export default function Dashboard() {
   const [branchFilter, setBranchFilter] = useState("all");
   const [sectionFilter, setSectionFilter] = useState("all");
   const [semesterFilter, setSemesterFilter] = useState("all");
+  const [assignedUserFilter, setAssignedUserFilter] = useState("all");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   
   const [currentPage, setCurrentPage] = useState(1);
@@ -186,7 +187,7 @@ export default function Dashboard() {
 
   const handleAssignStudents = async () => {
     if (!selectedUserIdToAssign) {
-      alert("Please select a user to assign to.");
+      alert("Please select a user to assign to, or choose 'Unassign'.");
       return;
     }
     if (selectedStudents.length === 0) {
@@ -201,14 +202,17 @@ export default function Dashboard() {
         body: JSON.stringify({ rollNumbers: selectedStudents, userId: selectedUserIdToAssign })
       });
       if (res.ok) {
-        alert("Students assigned successfully!");
+        alert(selectedUserIdToAssign === 'unassign' ? "Students unassigned successfully!" : "Students assigned successfully!");
         setSelectedStudents([]);
-        fetchStudents(); // Refresh data
+        setSelectedUserIdToAssign("");
+        await fetchStudents(); // Refresh data
       } else {
-        alert("Failed to assign students.");
+        const data = await res.json();
+        alert(data.error || "Failed to assign students.");
       }
     } catch (e) {
       console.error(e);
+      alert("Error assigning students.");
     }
   };
 
@@ -270,7 +274,7 @@ export default function Dashboard() {
   };
 
   // Sorting state - default to Roll Number ascending
-  type SortField = 'rollNumber' | 'name' | 'branch' | 'semester' | 'section' | 'mentor' | 'solvedToday' | 'totalSolved' | 'easySolved' | 'mediumSolved' | 'hardSolved' | 'globalRank' | 'status';
+  type SortField = 'rollNumber' | 'name' | 'branch' | 'semester' | 'section' | 'mentor' | 'assignedUser' | 'solvedToday' | 'totalSolved' | 'easySolved' | 'mediumSolved' | 'hardSolved' | 'globalRank' | 'status';
   const [sortField, setSortField] = useState<SortField>('rollNumber');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -298,7 +302,8 @@ export default function Dashboard() {
                             r.name?.toLowerCase().includes(term) || 
                             r.rollNumber?.toLowerCase().includes(term) ||
                             (r.mentor && r.mentor.toLowerCase().includes(term)) ||
-                            (r.branch && r.branch.toLowerCase().includes(term));
+                            (r.branch && r.branch.toLowerCase().includes(term)) ||
+                            (r.assignedUser?.username && r.assignedUser.username.toLowerCase().includes(term));
       const matchesStatus = statusFilter === 'all' || 
                             (statusFilter === 'success' && (r.status === 'success' || r.status === 'partial_success')) ||
                             (statusFilter === 'failed' && ['timeout', 'unknown_error', 'not_found', 'invalid_url'].includes(r.status)) ||
@@ -306,14 +311,24 @@ export default function Dashboard() {
       const matchesBranch = branchFilter === 'all' || r.branch === branchFilter;
       const matchesSection = sectionFilter === 'all' || r.section === sectionFilter;
       const matchesSemester = semesterFilter === 'all' || r.semester === semesterFilter;
+      const matchesAssigned = assignedUserFilter === 'all' || 
+                            (assignedUserFilter === 'unassigned' && !r.assignedUserId) ||
+                            (r.assignedUserId === assignedUserFilter);
       
-      return matchesSearch && matchesStatus && matchesBranch && matchesSection && matchesSemester;
+      return matchesSearch && matchesStatus && matchesBranch && matchesSection && matchesSemester && matchesAssigned;
     });
-  }, [rows, searchTerm, statusFilter, branchFilter, sectionFilter, semesterFilter]);
+  }, [rows, searchTerm, statusFilter, branchFilter, sectionFilter, semesterFilter, assignedUserFilter]);
 
   const sortedRows = useMemo(() => {
     const sorted = [...filteredRows];
     sorted.sort((a, b) => {
+      if (sortField === 'assignedUser') {
+        const uA = a.assignedUser?.username || '';
+        const uB = b.assignedUser?.username || '';
+        const comp = uA.localeCompare(uB);
+        return sortDirection === 'asc' ? comp : -comp;
+      }
+
       let aVal = a[sortField];
       let bVal = b[sortField];
 
@@ -344,7 +359,7 @@ export default function Dashboard() {
   // Reset to page 1 when any filter or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, branchFilter, sectionFilter, semesterFilter, sortField, sortDirection]);
+  }, [searchTerm, statusFilter, branchFilter, sectionFilter, semesterFilter, assignedUserFilter, sortField, sortDirection]);
 
   const paginatedRows = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -467,6 +482,9 @@ export default function Dashboard() {
 
                     {isAdmin && (
                       <>
+                        <Link href="/admin/users" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <Users size={16} /> User Management
+                        </Link>
                         <Link href="/admin/data" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
                           <Database size={16} /> Full Data
                         </Link>
@@ -538,6 +556,12 @@ export default function Dashboard() {
           </div>
 
           <div className="hero-right-actions">
+            {isAdmin && (
+              <Link href="/admin/users" className="btn btn-outline hero-action-btn" title="Manage sub-users, student assignments, and passwords">
+                <Users size={16} />
+                <span>Manage Users</span>
+              </Link>
+            )}
             <button
               onClick={() => handleRefresh(rows.map(r => r.rollNumber))}
               disabled={isScraping || rows.length === 0}
@@ -794,14 +818,32 @@ export default function Dashboard() {
                 </select>
               </div>
 
+              {isAdmin && (
+                <div className="filter-select-wrapper">
+                  <span className="filter-label">Assigned User:</span>
+                  <select 
+                    value={assignedUserFilter}
+                    onChange={e => setAssignedUserFilter(e.target.value)}
+                    className="filter-select"
+                  >
+                    <option value="all">All Assignments</option>
+                    <option value="unassigned">Unassigned Only</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>Assigned: {u.username}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               {/* Clear Filters Button (shown only when any filter or search is active) */}
-              {(statusFilter !== 'all' || branchFilter !== 'all' || semesterFilter !== 'all' || sectionFilter !== 'all' || searchTerm !== '') && (
+              {(statusFilter !== 'all' || branchFilter !== 'all' || semesterFilter !== 'all' || sectionFilter !== 'all' || assignedUserFilter !== 'all' || searchTerm !== '') && (
                 <button
                   onClick={() => {
                     setStatusFilter('all');
                     setBranchFilter('all');
                     setSemesterFilter('all');
                     setSectionFilter('all');
+                    setAssignedUserFilter('all');
                     setSearchTerm('');
                   }}
                   className="filter-reset-btn"
@@ -828,6 +870,7 @@ export default function Dashboard() {
                   className="bulk-select"
                 >
                   <option value="">Select Sub-User to Assign...</option>
+                  <option value="unassign">-- Unassign (Remove from User) --</option>
                   {users.map(u => (
                     <option key={u.id} value={u.id}>{u.username} ({u.role})</option>
                   ))}
@@ -838,8 +881,13 @@ export default function Dashboard() {
                   className="btn btn-primary bulk-btn"
                   disabled={!selectedUserIdToAssign}
                 >
-                  Assign to User
+                  {selectedUserIdToAssign === 'unassign' ? 'Unassign Students' : 'Assign to User'}
                 </button>
+
+                <Link href="/admin/users" className="btn btn-outline bulk-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={14} />
+                  <span>Manage Users</span>
+                </Link>
 
                 <button
                   onClick={() => handleRefresh(selectedStudents)}
@@ -946,6 +994,18 @@ export default function Dashboard() {
                       )}
                     </div>
                   </th>
+                  {isAdmin && (
+                    <th onClick={() => handleSort('assignedUser')} style={{ cursor: 'pointer', minWidth: '130px', userSelect: 'none' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        Assigned To 
+                        {sortField === 'assignedUser' ? (
+                          sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
+                        ) : (
+                          <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
+                        )}
+                      </div>
+                    </th>
+                  )}
                   <th onClick={() => handleSort('solvedToday')} className="text-right" style={{ cursor: 'pointer', minWidth: '95px', userSelect: 'none' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, width: '100%' }}>
                       Today 
@@ -1058,6 +1118,22 @@ export default function Dashboard() {
                           {row.mentor || '—'}
                         </div>
                       </td>
+                      {isAdmin && (
+                        <td>
+                          {row.assignedUser ? (
+                            <span 
+                              className="cohort-tag" 
+                              style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                              title={`Assigned to ${row.assignedUser.username}`}
+                            >
+                              <User size={12} />
+                              {row.assignedUser.username}
+                            </span>
+                          ) : (
+                            <span className="text-muted" style={{ opacity: 0.5, fontSize: '0.8rem' }}>Unassigned</span>
+                          )}
+                        </td>
+                      )}
                       <td className="text-right">
                         {(row.solvedToday || 0) > 0 ? (
                           <span className="today-badge">+{row.solvedToday}</span>
@@ -1116,7 +1192,7 @@ export default function Dashboard() {
                 })}
                 {paginatedRows.length === 0 && (
                   <tr>
-                    <td colSpan={16} className="text-center p-8 text-muted">
+                    <td colSpan={isAdmin ? 17 : 16} className="text-center p-8 text-muted">
                       No students found matching your search or filters.
                     </td>
                   </tr>
@@ -1238,6 +1314,44 @@ export default function Dashboard() {
 
               {/* Modal Content */}
               <div style={{ padding: '24px', flex: '1 1 auto', overflowY: 'auto' }}>
+                {isAdmin && (
+                  <div style={{ background: '#f8fafc', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '12px 16px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <User size={16} style={{ color: 'var(--primary)' }} />
+                      <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Assigned Sub-User:</span>
+                      <span style={{ fontSize: '0.88rem', color: selectedStudent.assignedUser ? 'var(--primary)' : 'var(--muted)', fontWeight: 600 }}>
+                        {selectedStudent.assignedUser ? selectedStudent.assignedUser.username : 'Unassigned'}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <label style={{ fontSize: '0.82rem', color: 'var(--muted)', fontWeight: 500 }}>Reassign to:</label>
+                      <select
+                        value={selectedStudent.assignedUserId || ""}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          try {
+                            const res = await fetch('/api/students/assign', {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ rollNumbers: [selectedStudent.rollNumber], userId: val || "unassign" })
+                            });
+                            if (res.ok) {
+                              await fetchStudents();
+                            }
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.85rem', background: 'white' }}
+                      >
+                        <option value="">-- Unassigned --</option>
+                        {users.map(u => (
+                          <option key={u.id} value={u.id}>{u.username} ({u.role})</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
                 <div className="metrics-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginBottom: '24px' }}>
                   <div className="metric-card" style={{margin: 0}}>
                     <div className="metric-icon-wrapper"><Target size={24} /></div>

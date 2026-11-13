@@ -13,7 +13,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { id } = await params;
     const body = await req.json();
 
-    const { name, rollNumber, branch, semester, section, mentor, url } = body;
+    const { name, rollNumber, branch, semester, section, mentor, url, assignedUserId } = body;
 
     // Optional: check if new rollNumber already exists
     if (rollNumber) {
@@ -23,16 +23,25 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }
     }
 
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (rollNumber !== undefined) updateData.rollNumber = rollNumber;
+    if (branch !== undefined) updateData.branch = branch;
+    if (semester !== undefined) updateData.semester = semester;
+    if (section !== undefined) updateData.section = section;
+    if (mentor !== undefined) updateData.mentor = mentor;
+    if (url !== undefined) updateData.url = url;
+    if (assignedUserId !== undefined) {
+      updateData.assignedUserId = assignedUserId === "unassign" ? null : assignedUserId;
+    }
+
     const updated = await prisma.student.update({
       where: { id },
-      data: {
-        name,
-        rollNumber,
-        branch,
-        semester,
-        section,
-        mentor,
-        url
+      data: updateData,
+      include: {
+        assignedUser: {
+          select: { id: true, username: true, role: true }
+        }
       }
     });
 

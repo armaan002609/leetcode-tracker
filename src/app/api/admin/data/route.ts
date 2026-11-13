@@ -40,6 +40,9 @@ export async function GET(req: Request) {
         take: limit,
         orderBy: { rollNumber: 'asc' },
         include: {
+          assignedUser: {
+            select: { id: true, username: true }
+          },
           submissions: {
             orderBy: { timestamp: 'desc' }
           }

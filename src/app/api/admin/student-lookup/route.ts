@@ -20,6 +20,9 @@ export async function GET(req: Request) {
     const student = await prisma.student.findUnique({
       where: { rollNumber },
       include: {
+        assignedUser: {
+          select: { id: true, username: true }
+        },
         submissions: {
           orderBy: { timestamp: 'desc' }
         },

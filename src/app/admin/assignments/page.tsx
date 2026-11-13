@@ -212,11 +212,19 @@ export default function AssignmentsPage() {
     <div className="dashboard-layout">
       <nav className="topnav">
         <div className="topnav-brand">
-          <Link href="/" className="icon-btn" style={{background: 'transparent', textDecoration: 'none', color: 'inherit'}}>
+          <Link href="/" className="icon-btn" style={{background: 'transparent', textDecoration: 'none', color: 'inherit'}} title="Back to Dashboard">
             <ArrowLeft size={20} />
           </Link>
           <div className="topnav-brand-icon">L</div>
           <span>Assignments</span>
+        </div>
+        <div className="topnav-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Link href="/admin/users" className="btn btn-outline hide-on-mobile" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '6px 12px' }}>
+            User Management
+          </Link>
+          <Link href="/admin/data" className="btn btn-outline hide-on-mobile" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '6px 12px' }}>
+            Full Data
+          </Link>
         </div>
       </nav>
 
