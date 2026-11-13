@@ -213,31 +213,94 @@ export async function scrapeProfile(url: string, controller?: AbortController): 
     return { status: 'unknown_error', solved_today: null, total_solved: null, easy_solved: null, medium_solved: null, hard_solved: null, global_rank: null, badges: null };
   }
 }
-let difficultyCache: Record<string, string> | null = null;
-let lastCacheTime = 0;
+const difficultyCache: Map<string, string> = new Map();
 
-async function getDifficultyMap() {
-  if (difficultyCache && Date.now() - lastCacheTime < 1000 * 60 * 60 * 24) {
-    return difficultyCache;
+export async function resolveQuestionDifficulties(titleSlugs: string[]): Promise<Record<string, string>> {
+  if (!titleSlugs || titleSlugs.length === 0) return {};
+
+  const uniqueSlugs = Array.from(new Set(titleSlugs.filter(Boolean)));
+  const result: Record<string, string> = {};
+  const missingSlugs: string[] = [];
+
+  // 1. Check in-memory cache
+  for (const slug of uniqueSlugs) {
+    if (difficultyCache.has(slug)) {
+      result[slug] = difficultyCache.get(slug)!;
+    } else {
+      missingSlugs.push(slug);
+    }
   }
+
+  if (missingSlugs.length === 0) return result;
+
+  // 2. Check Database for known difficulties for these slugs
   try {
-    const res = await fetch('https://leetcode.com/api/problems/all/');
-    const data = await res.json();
-    const map: Record<string, string> = {};
-    if (data && data.stat_status_pairs) {
-      for (const item of data.stat_status_pairs) {
-        const slug = item.stat.question__title_slug;
-        const level = item.difficulty.level;
-        map[slug] = level === 1 ? 'Easy' : level === 2 ? 'Medium' : 'Hard';
+    const { prisma } = await import('@/lib/prisma');
+    const existing = await prisma.submission.findMany({
+      where: {
+        titleSlug: { in: missingSlugs },
+        difficulty: { in: ['Easy', 'Medium', 'Hard'] }
+      },
+      select: { titleSlug: true, difficulty: true },
+      distinct: ['titleSlug']
+    });
+
+    for (const item of existing) {
+      if (item.difficulty) {
+        difficultyCache.set(item.titleSlug, item.difficulty);
+        result[item.titleSlug] = item.difficulty;
       }
     }
-    difficultyCache = map;
-    lastCacheTime = Date.now();
-    return map;
   } catch (e) {
-    console.error('Failed to fetch difficulty map', e);
-    return difficultyCache || {};
+    // Non-fatal if DB query fails, continue to GraphQL
   }
+
+  // 3. For any slugs still missing, fetch from LeetCode GraphQL in batches
+  const stillMissing = missingSlugs.filter(slug => !difficultyCache.has(slug));
+  if (stillMissing.length > 0) {
+    const BATCH_SIZE = 25;
+    for (let i = 0; i < stillMissing.length; i += BATCH_SIZE) {
+      const batch = stillMissing.slice(i, i + BATCH_SIZE);
+      const fields = batch.map((slug, idx) => `q_${idx}: question(titleSlug: "${slug}") { difficulty }`).join('\n');
+      const query = `query {\n${fields}\n}`;
+
+      try {
+        const response = await fetch(LEETCODE_GRAPHQL_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          },
+          body: JSON.stringify({ query }),
+          cache: 'no-store'
+        });
+
+        if (response.ok) {
+          const json = await response.json();
+          if (json?.data) {
+            batch.forEach((slug, idx) => {
+              const diff = json.data[`q_${idx}`]?.difficulty;
+              if (diff) {
+                difficultyCache.set(slug, diff);
+                result[slug] = diff;
+              }
+            });
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching difficulties from LeetCode GraphQL:', e);
+      }
+    }
+  }
+
+  // Fill any unresolved as 'Unknown'
+  for (const slug of uniqueSlugs) {
+    if (!result[slug]) {
+      result[slug] = difficultyCache.get(slug) || 'Unknown';
+    }
+  }
+
+  return result;
 }
 
 export async function fetchRecentAcSubmissions(username: string, limit: number = 50) {
@@ -268,7 +331,8 @@ export async function fetchRecentAcSubmissions(username: string, limit: number =
     
     // Attach difficulty
     if (submissions.length > 0) {
-      const diffMap = await getDifficultyMap();
+      const slugs = submissions.map((s: any) => s.titleSlug);
+      const diffMap = await resolveQuestionDifficulties(slugs);
       return submissions.map((s: any) => ({
         ...s,
         difficulty: diffMap[s.titleSlug] || 'Unknown'

@@ -1426,10 +1426,10 @@ export default function Dashboard() {
                             <td style={{padding: '12px 16px'}}>
                               <span style={{
                                 padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600,
-                                color: sub.difficulty === 'Easy' ? '#10b981' : sub.difficulty === 'Medium' ? '#f59e0b' : '#ef4444',
-                                backgroundColor: sub.difficulty === 'Easy' ? '#ecfdf5' : sub.difficulty === 'Medium' ? '#fffbeb' : '#fef2f2'
+                                color: sub.difficulty === 'Easy' ? '#10b981' : sub.difficulty === 'Medium' ? '#f59e0b' : sub.difficulty === 'Hard' ? '#ef4444' : '#64748b',
+                                backgroundColor: sub.difficulty === 'Easy' ? '#ecfdf5' : sub.difficulty === 'Medium' ? '#fffbeb' : sub.difficulty === 'Hard' ? '#fef2f2' : '#f1f5f9'
                               }}>
-                                {sub.difficulty}
+                                {sub.difficulty || 'Easy'}
                               </span>
                             </td>
                             <td style={{padding: '12px 16px', textAlign: 'right', color: 'var(--text-muted)'}}>
