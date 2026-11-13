@@ -501,7 +501,7 @@ export default function AssignmentsPage() {
                     <button
                       onClick={() => handleOpenBulkModal(selectedAssignmentIds)}
                       className="btn btn-primary"
-                      style={{ background: '#f59e0b', borderColor: '#f59e0b', color: 'white', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '6px 12px' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '6px 14px' }}
                     >
                       <Mail size={14} /> Send Reminder ({selectedAssignmentIds.length})
                     </button>
@@ -521,13 +521,13 @@ export default function AssignmentsPage() {
               {selectedAssignmentIds.length > 0 && (
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-                  color: 'white', padding: '10px 16px', margin: '0 16px 12px 16px',
+                  background: 'linear-gradient(135deg, #a40e19 0%, #7d0b13 100%)',
+                  color: 'white', padding: '12px 18px', margin: '0 16px 14px 16px',
                   borderRadius: '8px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  boxShadow: '0 4px 14px rgba(164, 14, 25, 0.25)'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ background: '#f59e0b', color: 'white', padding: '2px 8px', borderRadius: '12px', fontWeight: 700, fontSize: '0.78rem' }}>
+                    <span style={{ background: 'rgba(255, 255, 255, 0.2)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.35)', padding: '2px 8px', borderRadius: '12px', fontWeight: 700, fontSize: '0.78rem' }}>
                       {selectedAssignmentIds.length} Selected
                     </span>
                     <span style={{ fontSize: '0.85rem' }}>
@@ -537,17 +537,15 @@ export default function AssignmentsPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button 
                       onClick={() => setSelectedAssignmentIds([])}
-                      className="btn btn-outline"
-                      style={{ color: '#cbd5e1', borderColor: '#475569', fontSize: '0.78rem', padding: '4px 10px' }}
+                      style={{ background: 'rgba(255, 255, 255, 0.15)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.3)', borderRadius: '6px', fontSize: '0.78rem', padding: '5px 12px', cursor: 'pointer' }}
                     >
                       Clear
                     </button>
                     <button
                       onClick={() => handleOpenBulkModal(selectedAssignmentIds)}
-                      className="btn btn-primary"
-                      style={{ background: '#f59e0b', borderColor: '#f59e0b', color: 'white', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '5px 12px' }}
+                      style={{ background: 'white', color: 'var(--primary)', border: 'none', borderRadius: '6px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '6px 14px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
                     >
-                      <Mail size={14} /> Send Reminder ({selectedAssignmentIds.length} Questions)
+                      <Mail size={14} /> Send Reminder ({selectedAssignmentIds.length} {selectedAssignmentIds.length === 1 ? 'Question' : 'Questions'})
                     </button>
                   </div>
                 </div>
@@ -571,7 +569,7 @@ export default function AssignmentsPage() {
                           checked={filteredAssignments.length > 0 && filteredAssignments.every(a => selectedAssignmentIds.includes(a.id))}
                           onChange={toggleSelectAll}
                           title="Select / Deselect all visible questions"
-                          style={{ cursor: 'pointer', width: 16, height: 16, accentColor: '#f59e0b' }}
+                          style={{ cursor: 'pointer', width: 16, height: 16, accentColor: 'var(--primary)' }}
                         />
                       </th>
                       <th style={{padding: '12px 16px'}}>Question</th>
@@ -592,7 +590,7 @@ export default function AssignmentsPage() {
                                 e.stopPropagation();
                                 toggleSelectAssignment(a.id);
                               }}
-                              style={{ cursor: 'pointer', width: 16, height: 16, accentColor: '#f59e0b' }}
+                              style={{ cursor: 'pointer', width: 16, height: 16, accentColor: 'var(--primary)' }}
                             />
                           </td>
                           <td style={{padding: '12px 16px', fontWeight: 500}}>
@@ -621,7 +619,7 @@ export default function AssignmentsPage() {
                                 onClick={(e) => { e.stopPropagation(); handleOpenBulkModal([a.id]); }}
                                 className="icon-btn"
                                 title="Send Email Reminder to Pending Students"
-                                style={{ color: '#f59e0b', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                                style={{ color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
                               >
                                 <Mail size={16} />
                               </button>
@@ -673,7 +671,7 @@ export default function AssignmentsPage() {
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); handleOpenBulkModal([a.id]); }}
                                         className="btn btn-primary"
-                                        style={{ fontSize: '0.82rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', background: '#f59e0b', borderColor: '#f59e0b', color: 'white' }}
+                                        style={{ fontSize: '0.82rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
                                       >
                                         <Mail size={14} /> Send Email Reminder ({assignmentDetails.studentAssignments.filter((sa: any) => sa.status === 'pending').length} Pending)
                                       </button>
@@ -894,7 +892,7 @@ export default function AssignmentsPage() {
           <div style={{ background: 'white', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '580px', boxShadow: 'var(--shadow-xl)', maxHeight: '92vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '8px', background: '#fef3c7', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '8px', background: 'rgba(164, 14, 25, 0.08)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Mail size={20} />
                 </div>
                 <div>
@@ -915,9 +913,9 @@ export default function AssignmentsPage() {
             </div>
 
             {/* Single Email / BCC Notice */}
-            <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '12px 14px', marginBottom: '18px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-              <div style={{ color: '#059669', marginTop: '2px' }}><CheckCircle2 size={18} /></div>
-              <div style={{ fontSize: '0.82rem', color: '#065f46', lineHeight: 1.5 }}>
+            <div style={{ background: 'rgba(164, 14, 25, 0.04)', border: '1px solid rgba(164, 14, 25, 0.18)', borderRadius: '8px', padding: '12px 14px', marginBottom: '18px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+              <div style={{ color: 'var(--primary)', marginTop: '2px' }}><CheckCircle2 size={18} /></div>
+              <div style={{ fontSize: '0.82rem', color: '#7d0b13', lineHeight: 1.5 }}>
                 <strong>Single Email Dispatch:</strong> All student recipients are bundled into the same email dispatch via <strong>BCC</strong>. This counts as <strong>only 1 email send</strong> towards your daily quota, and ensures complete student email privacy.
               </div>
             </div>
@@ -960,16 +958,16 @@ export default function AssignmentsPage() {
                     <span>Notification Run Completed!</span>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '12px', textAlign: 'center' }}>
-                    <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid #d1fae5' }}>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#059669' }}>{notificationResult.emailsSent}</div>
+                    <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid rgba(164, 14, 25, 0.2)' }}>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--primary)' }}>{notificationResult.emailsSent}</div>
                       <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Email Sent (Counts as 1)</div>
                     </div>
                     <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#0284c7' }}>{notificationResult.totalRecipients}</div>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#059669' }}>{notificationResult.totalRecipients}</div>
                       <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Students Reached</div>
                     </div>
-                    <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid #fef3c7' }}>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#f59e0b' }}>{notificationResult.skippedNoEmail}</div>
+                    <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid var(--surface-border)' }}>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--muted)' }}>{notificationResult.skippedNoEmail}</div>
                       <div style={{ fontSize: '0.78rem', color: '#64748b' }}>No Email</div>
                     </div>
                   </div>
@@ -1015,16 +1013,16 @@ export default function AssignmentsPage() {
                 ) : bulkPreviewData ? (
                   <div style={{ background: '#f8fafc', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '14px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', textAlign: 'center' }}>
-                      <div style={{ background: 'white', padding: '10px 8px', borderRadius: '6px', border: '1px solid var(--surface-border)' }}>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#ef4444' }}>{bulkPreviewData.totalUniquePendingStudents}</div>
+                      <div style={{ background: 'white', padding: '10px 8px', borderRadius: '6px', border: '1px solid rgba(164, 14, 25, 0.2)' }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>{bulkPreviewData.totalUniquePendingStudents}</div>
                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Pending Students</div>
                       </div>
                       <div style={{ background: 'white', padding: '10px 8px', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
                         <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#16a34a' }}>{bulkPreviewData.totalRecipientsWithEmail}</div>
                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>With Email in DB</div>
                       </div>
-                      <div style={{ background: 'white', padding: '10px 8px', borderRadius: '6px', border: '1px solid #fed7aa' }}>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#ea580c' }}>{bulkPreviewData.skippedNoEmailCount}</div>
+                      <div style={{ background: 'white', padding: '10px 8px', borderRadius: '6px', border: '1px solid var(--surface-border)' }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--muted)' }}>{bulkPreviewData.skippedNoEmailCount}</div>
                         <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Missing Email</div>
                       </div>
                     </div>
@@ -1074,6 +1072,7 @@ export default function AssignmentsPage() {
                         value="bcc" 
                         checked={recipientMode === 'bcc'} 
                         onChange={() => setRecipientMode('bcc')} 
+                        style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
                       />
                       <span><strong>BCC</strong> (Recommended &bull; Keeps emails private)</span>
                     </label>
@@ -1084,6 +1083,7 @@ export default function AssignmentsPage() {
                         value="cc" 
                         checked={recipientMode === 'cc'} 
                         onChange={() => setRecipientMode('cc')} 
+                        style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
                       />
                       <span><strong>CC</strong> (All emails visible)</span>
                     </label>
@@ -1135,7 +1135,7 @@ export default function AssignmentsPage() {
                     type="submit" 
                     disabled={isSendingNotifications || (bulkPreviewData && bulkPreviewData.totalRecipientsWithEmail === 0 && !defaultDomain)} 
                     className="btn btn-primary"
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f59e0b', borderColor: '#f59e0b', color: 'white' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                   >
                     {isSendingNotifications ? (
                       <>

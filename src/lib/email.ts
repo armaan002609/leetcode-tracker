@@ -58,15 +58,15 @@ export async function sendAssignmentReminder(options: SendReminderOptions) {
           
           <!-- Header Banner -->
           <tr>
-            <td style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 28px 32px; text-align: left;">
+            <td style="background: linear-gradient(135deg, #a40e19 0%, #7d0b13 100%); padding: 28px 32px; text-align: left;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="display: inline-block; width: 36px; height: 36px; line-height: 36px; background-color: #f59e0b; color: #ffffff; font-weight: 800; font-size: 20px; border-radius: 8px; text-align: center; margin-right: 12px; vertical-align: middle;">L</div>
+                    <div style="display: inline-block; width: 36px; height: 36px; line-height: 36px; background-color: #ffffff; color: #a40e19; font-weight: 800; font-size: 20px; border-radius: 8px; text-align: center; margin-right: 12px; vertical-align: middle;">L</div>
                     <span style="color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px; vertical-align: middle;">LeetCode Tracker</span>
                   </td>
                   <td align="right">
-                    <span style="display: inline-block; background-color: rgba(245, 158, 11, 0.2); color: #fde68a; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px;">Assignment Reminder</span>
+                    <span style="display: inline-block; background-color: rgba(255, 255, 255, 0.2); color: #ffffff; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px;">Assignment Reminder</span>
                   </td>
                 </tr>
               </table>
@@ -85,7 +85,7 @@ export async function sendAssignmentReminder(options: SendReminderOptions) {
               </p>
 
               <!-- Problem Card Box -->
-              <div style="background-color: #f1f5f9; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 20px; margin-bottom: 28px;">
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #a40e19; border-radius: 8px; padding: 20px; margin-bottom: 28px;">
                 <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 6px;">Assigned Problem</div>
                 <div style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">${displayTitle}</div>
                 <div style="font-size: 13px; color: #64748b;">Slug: <code>${titleSlug}</code></div>
@@ -95,7 +95,7 @@ export async function sendAssignmentReminder(options: SendReminderOptions) {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 28px;">
                 <tr>
                   <td align="center">
-                    <a href="${problemUrl}" target="_blank" style="display: inline-block; background-color: #f59e0b; color: #ffffff; font-weight: 600; font-size: 15px; text-decoration: none; padding: 14px 28px; border-radius: 8px; box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);">
+                    <a href="${problemUrl}" target="_blank" style="display: inline-block; background-color: #a40e19; color: #ffffff; font-weight: 600; font-size: 15px; text-decoration: none; padding: 14px 28px; border-radius: 8px; box-shadow: 0 2px 4px rgba(164, 14, 25, 0.25);">
                       Solve on LeetCode &rarr;
                     </a>
                   </td>
@@ -166,7 +166,7 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
     const title = a.title || a.titleSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const problemUrl = `https://leetcode.com/problems/${a.titleSlug}/`;
     return `
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 16px 20px; margin-bottom: 14px;">
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #a40e19; border-radius: 8px; padding: 16px 20px; margin-bottom: 14px;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr>
             <td style="vertical-align: top;">
@@ -183,7 +183,7 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
           </tr>
           <tr>
             <td style="padding-top: 6px;">
-              <a href="${problemUrl}" target="_blank" style="display: inline-block; background-color: #f59e0b; color: #ffffff; font-weight: 600; font-size: 13px; text-decoration: none; padding: 8px 16px; border-radius: 6px;">
+              <a href="${problemUrl}" target="_blank" style="display: inline-block; background-color: #a40e19; color: #ffffff; font-weight: 600; font-size: 13px; text-decoration: none; padding: 8px 16px; border-radius: 6px; box-shadow: 0 2px 4px rgba(164, 14, 25, 0.25);">
                 Solve on LeetCode &rarr;
               </a>
             </td>
@@ -214,15 +214,15 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
           
           <!-- Header Banner -->
           <tr>
-            <td style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 26px 30px; text-align: left;">
+            <td style="background: linear-gradient(135deg, #a40e19 0%, #7d0b13 100%); padding: 26px 30px; text-align: left;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="display: inline-block; width: 34px; height: 34px; line-height: 34px; background-color: #f59e0b; color: #ffffff; font-weight: 800; font-size: 19px; border-radius: 8px; text-align: center; margin-right: 10px; vertical-align: middle;">L</div>
+                    <div style="display: inline-block; width: 34px; height: 34px; line-height: 34px; background-color: #ffffff; color: #a40e19; font-weight: 800; font-size: 19px; border-radius: 8px; text-align: center; margin-right: 10px; vertical-align: middle;">L</div>
                     <span style="color: #ffffff; font-size: 19px; font-weight: 700; letter-spacing: -0.5px; vertical-align: middle;">LeetCode Tracker</span>
                   </td>
                   <td align="right">
-                    <span style="display: inline-block; background-color: rgba(245, 158, 11, 0.2); color: #fde68a; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px;">
+                    <span style="display: inline-block; background-color: rgba(255, 255, 255, 0.2); color: #ffffff; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px;">
                       ${assignments.length} ${assignments.length === 1 ? 'Problem' : 'Problems'}
                     </span>
                   </td>
@@ -234,7 +234,7 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
           ${isTest ? `
           <!-- Test Notice Banner -->
           <tr>
-            <td style="background-color: #eff6ff; border-bottom: 1px solid #bfdbfe; padding: 10px 24px; text-align: center; font-size: 12px; font-weight: 600; color: #1d4ed8;">
+            <td style="background-color: #fff1f2; border-bottom: 1px solid #fecdd3; padding: 10px 24px; text-align: center; font-size: 12px; font-weight: 600; color: #a40e19;">
               ℹ️ TEST PREVIEW EMAIL &bull; This is how the reminder will look to students.
             </td>
           </tr>` : ''}
@@ -253,8 +253,8 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
               <!-- Problems List -->
               ${problemsHtml}
 
-              <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px 16px; margin-top: 20px;">
-                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #92400e;">
+              <div style="background-color: #fdf2f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 14px 16px; margin-top: 20px;">
+                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #991b1b;">
                   <strong>Note:</strong> Once you submit an Accepted (AC) solution on LeetCode with your registered LeetCode account, the tracker will automatically record your completion on the next synchronization.
                 </p>
               </div>
