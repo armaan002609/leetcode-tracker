@@ -4,6 +4,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sendAssignmentReminder } from '@/lib/email';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -71,33 +73,52 @@ export async function POST(
     const skippedNoEmail: Array<{ rollNumber: string; name: string }> = [];
     const errors: Array<{ rollNumber: string; error: string }> = [];
 
-    // Send emails with batching and small delays to adhere to SMTP limits
+    const startTime = Date.now();
+    const MAX_DURATION_MS = 8500; // 8.5 seconds limit to stay well within Vercel timeout
+
+    // Separate students with valid emails vs missing emails
+    const recipients: Array<{ student: typeof pendingList[0]['student']; targetEmail: string }> = [];
+
     for (const item of pendingList) {
       const student = item.student;
       const targetEmail = student.email || (defaultDomain ? `${student.rollNumber}@${defaultDomain}` : null);
 
-      if (!targetEmail) {
+      if (!targetEmail || !targetEmail.includes('@')) {
         skippedNoEmail.push({ rollNumber: student.rollNumber, name: student.name });
-        continue;
-      }
-
-      try {
-        await sendAssignmentReminder({
-          to: targetEmail,
-          studentName: student.name,
-          rollNumber: student.rollNumber,
-          assignmentTitle: assignment.title || assignment.titleSlug,
-          titleSlug: assignment.titleSlug,
-        });
-        sent++;
-        // Small delay between sends (200ms)
-        await new Promise((r) => setTimeout(r, 200));
-      } catch (err: any) {
-        failed++;
-        errors.push({ rollNumber: student.rollNumber, error: err.message || 'Failed to send email' });
-        console.error(`Failed to send reminder email to ${student.rollNumber} (${targetEmail}):`, err);
+      } else {
+        recipients.push({ student, targetEmail });
       }
     }
+
+    // Process valid recipients in concurrent batches of 4
+    const BATCH_SIZE = 4;
+    for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+      if (Date.now() - startTime > MAX_DURATION_MS) {
+        break;
+      }
+      const batch = recipients.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async ({ student, targetEmail }) => {
+        try {
+          await sendAssignmentReminder({
+            to: targetEmail,
+            studentName: student.name,
+            rollNumber: student.rollNumber,
+            assignmentTitle: assignment.title || assignment.titleSlug,
+            titleSlug: assignment.titleSlug,
+          });
+          sent++;
+        } catch (err: any) {
+          failed++;
+          errors.push({ rollNumber: student.rollNumber, error: err.message || 'Failed to send email' });
+          console.error(`Failed to send reminder email to ${student.rollNumber} (${targetEmail}):`, err);
+        }
+      }));
+
+      // Small pause between batches
+      await new Promise((r) => setTimeout(r, 150));
+    }
+
+    const isPartial = sent + failed < recipients.length;
 
     return NextResponse.json({
       success: true,
@@ -106,6 +127,8 @@ export async function POST(
       sent,
       skippedNoEmail: skippedNoEmail.length,
       failed,
+      isPartial,
+      remaining: recipients.length - (sent + failed),
       skippedList: skippedNoEmail.slice(0, 20),
       errors: errors.slice(0, 10),
     });

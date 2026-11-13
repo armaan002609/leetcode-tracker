@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Plus, BookOpen, Trash2, Users, Download, Edit2, X, Mail, Send, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -37,6 +37,7 @@ export default function AssignmentsPage() {
   const [notificationResult, setNotificationResult] = useState<any>(null);
   const [defaultDomain, setDefaultDomain] = useState("");
   const [notifyError, setNotifyError] = useState("");
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const [availableBranches, setAvailableBranches] = useState<string[]>([]);
 
@@ -185,17 +186,33 @@ export default function AssignmentsPage() {
     setNotifyError("");
   };
 
+  const handleCloseNotifyModal = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsSendingNotifications(false);
+    setNotifyingAssignment(null);
+    setNotificationResult(null);
+    setNotifyError("");
+  };
+
   const handleSendNotifications = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!notifyingAssignment) return;
     setIsSendingNotifications(true);
     setNotifyError("");
     setNotificationResult(null);
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const res = await fetch(`/api/admin/assignments/${notifyingAssignment.id}/notify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ defaultDomain: defaultDomain.trim() }),
+        signal: controller.signal,
       });
       const data = await res.json();
       if (!res.ok) {
@@ -204,9 +221,13 @@ export default function AssignmentsPage() {
         setNotificationResult(data);
       }
     } catch (err: any) {
+      if (err.name === 'AbortError') {
+        return;
+      }
       setNotifyError(err.message || "Network error sending notifications.");
     } finally {
       setIsSendingNotifications(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -263,6 +284,9 @@ export default function AssignmentsPage() {
           <span>Assignments</span>
         </div>
         <div className="topnav-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <Link href="/admin/emails" className="btn btn-outline hide-on-mobile" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '6px 12px' }}>
+            <Mail size={15} /> Student Emails
+          </Link>
           <Link href="/admin/users" className="btn btn-outline hide-on-mobile" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '6px 12px' }}>
             User Management
           </Link>
@@ -696,7 +720,7 @@ export default function AssignmentsPage() {
                 </div>
               </div>
               <button 
-                onClick={() => { setNotifyingAssignment(null); setNotificationResult(null); setNotifyError(""); }} 
+                onClick={handleCloseNotifyModal} 
                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}
               >
                 <X size={20}/>
@@ -788,9 +812,8 @@ export default function AssignmentsPage() {
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
                   <button 
                     type="button" 
-                    onClick={() => setNotifyingAssignment(null)} 
+                    onClick={handleCloseNotifyModal} 
                     className="btn btn-outline"
-                    disabled={isSendingNotifications}
                   >
                     Cancel
                   </button>

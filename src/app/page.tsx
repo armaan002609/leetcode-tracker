@@ -7,7 +7,7 @@ import {
   AlertTriangle, RotateCw, Download, Search, AlertCircle,
   Menu, User, Grid, Home, ArrowLeft, Target, Activity, Award, UploadCloud, RefreshCw, Trash2, X, LogIn, LogOut, Database,
   Users, Flame, TrendingUp, Sparkles, Building2,
-  ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, RotateCcw
+  ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, RotateCcw, Mail
 } from "lucide-react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
@@ -486,6 +486,9 @@ export default function Dashboard() {
                         </Link>
                         <Link href="/upload" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
                           <UploadCloud size={16} /> Upload Data
+                        </Link>
+                        <Link href="/admin/emails" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <Mail size={16} /> Upload Student Emails
                         </Link>
                         <div style={{ height: '1px', background: 'var(--surface-border)', margin: '4px 0' }}></div>
                       </>
@@ -1292,6 +1295,33 @@ export default function Dashboard() {
                       <span style={{ fontSize: '0.88rem', color: selectedStudent.assignedUser ? 'var(--primary)' : 'var(--muted)', fontWeight: 600 }}>
                         {selectedStudent.assignedUser ? selectedStudent.assignedUser.username : 'Unassigned'}
                       </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Mail size={16} style={{ color: 'var(--primary)' }} />
+                      <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Email:</span>
+                      <input 
+                        type="email"
+                        defaultValue={selectedStudent.email || ''}
+                        placeholder="Add student email..."
+                        onBlur={async (e) => {
+                          const val = e.target.value.trim();
+                          if (val !== (selectedStudent.email || '')) {
+                            try {
+                              const res = await fetch('/api/admin/emails', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ rollNumber: selectedStudent.rollNumber, email: val })
+                              });
+                              if (res.ok) {
+                                await fetchStudents();
+                              }
+                            } catch (err) {
+                              console.error(err);
+                            }
+                          }
+                        }}
+                        style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.85rem', width: '220px', background: 'white' }}
+                      />
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <label style={{ fontSize: '0.82rem', color: 'var(--muted)', fontWeight: 500 }}>Reassign to:</label>
