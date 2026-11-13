@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 
+export const dynamic = 'force-dynamic';
+
 // We should use next-auth session to get the admin, but for now we might not have it configured fully.
 // If authOptions is not exported, we'll just fetch a default user or assume the first one.
 // Let's try to find an admin user. If not, fallback to any user for demonstration.
@@ -97,32 +99,34 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   try {
-    const assignments = await prisma.assignment.findMany({
-      include: {
-        assignedBy: {
-          select: { username: true }
+    const [assignments, completedCounts] = await Promise.all([
+      prisma.assignment.findMany({
+        include: {
+          assignedBy: {
+            select: { username: true }
+          },
+          _count: {
+            select: { studentAssignments: true }
+          }
         },
-        _count: {
-          select: { studentAssignments: true }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.studentAssignment.groupBy({
+        by: ['assignmentId'],
+        where: { status: 'completed' },
+        _count: { _all: true }
+      })
+    ]);
 
-    // For each assignment, get the count of completed
-    const enrichedAssignments = await Promise.all(assignments.map(async (assignment) => {
-      const completedCount = await prisma.studentAssignment.count({
-        where: {
-          assignmentId: assignment.id,
-          status: 'completed'
-        }
-      });
+    const countMap = new Map<string, number>();
+    for (const c of completedCounts) {
+      countMap.set(c.assignmentId, c._count._all);
+    }
 
-      return {
-        ...assignment,
-        completedCount,
-        totalAssigned: assignment._count.studentAssignments
-      };
+    const enrichedAssignments = assignments.map((assignment) => ({
+      ...assignment,
+      completedCount: countMap.get(assignment.id) || 0,
+      totalAssigned: assignment._count.studentAssignments
     }));
 
     return NextResponse.json(enrichedAssignments);

@@ -12,6 +12,7 @@ export default function AssignmentsPage() {
   
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState("");
   
   const [newUrl, setNewUrl] = useState("");
   const [newTitle, setNewTitle] = useState("");
@@ -88,12 +89,17 @@ export default function AssignmentsPage() {
 
   const fetchAssignments = async () => {
     try {
+      setFetchError("");
       const res = await fetch("/api/admin/assignments");
       if (res.ok) {
         setAssignments(await res.json());
+      } else {
+        const data = await res.json().catch(() => null);
+        setFetchError(data?.error || `Failed to load assignments (Status ${res.status})`);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setFetchError(e.message || "Failed to load assignments");
     } finally {
       setLoading(false);
     }
@@ -358,7 +364,12 @@ export default function AssignmentsPage() {
                     <Download size={16} /> Export All
                   </a>
               </div>
-              {assignments.length === 0 ? (
+              {fetchError ? (
+                <div style={{ padding: '32px', textAlign: 'center' }}>
+                  <div style={{ color: 'var(--destructive)', marginBottom: '12px', fontSize: '0.9rem' }}>{fetchError}</div>
+                  <button onClick={fetchAssignments} className="btn btn-outline" style={{ fontSize: '0.85rem' }}>Retry</button>
+                </div>
+              ) : assignments.length === 0 ? (
                 <div className="p-8 text-center text-muted">No assignments created yet.</div>
               ) : (
                 <div className="data-table-wrapper">
