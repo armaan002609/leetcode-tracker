@@ -57,7 +57,7 @@ export async function sendAssignmentReminder(options: SendReminderOptions) {
                     <span style="color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px; vertical-align: middle;">LeetCode Tracker</span>
                   </td>
                   <td align="right">
-                    <span style="display: inline-block; background-color: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px;">Pending Task</span>
+                    <span style="display: inline-block; background-color: rgba(245, 158, 11, 0.2); color: #fde68a; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px;">Assignment Reminder</span>
                   </td>
                 </tr>
               </table>
@@ -118,8 +118,14 @@ export async function sendAssignmentReminder(options: SendReminderOptions) {
   return transporter.sendMail({
     from: `"LeetCode Tracker" <${senderEmail}>`,
     to,
-    subject: `[Action Required] Pending LeetCode Assignment: ${displayTitle}`,
-    text: `Hello ${studentName} (${rollNumber}),\n\nYou have a pending LeetCode assignment: ${displayTitle}.\nPlease solve and submit it here: ${problemUrl}\n\nLeetCode Tracker`,
+    replyTo: senderEmail,
+    subject: `LeetCode Assignment: ${displayTitle}`,
+    text: `Hello ${studentName},\n\nYou have an assigned LeetCode problem: ${displayTitle}.\n\nPlease solve and submit your solution here:\n${problemUrl}\n\nOnce submitted and accepted, your progress will be updated automatically on the tracker.\n\nBest regards,\nLeetCode Tracker`,
     html: htmlContent,
+    headers: {
+      'X-Priority': '3',
+      'X-MSMail-Priority': 'Normal',
+      'Importance': 'Normal',
+    },
   });
 }
