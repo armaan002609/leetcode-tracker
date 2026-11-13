@@ -274,7 +274,7 @@ export default function Dashboard() {
   };
 
   // Sorting state - default to Roll Number ascending
-  type SortField = 'rollNumber' | 'name' | 'branch' | 'semester' | 'section' | 'mentor' | 'assignedUser' | 'solvedToday' | 'totalSolved' | 'easySolved' | 'mediumSolved' | 'hardSolved' | 'globalRank' | 'status';
+  type SortField = 'rollNumber' | 'name' | 'branch' | 'semester' | 'section' | 'mentor' | 'solvedToday' | 'totalSolved' | 'easySolved' | 'mediumSolved' | 'hardSolved' | 'globalRank' | 'status';
   const [sortField, setSortField] = useState<SortField>('rollNumber');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -322,13 +322,6 @@ export default function Dashboard() {
   const sortedRows = useMemo(() => {
     const sorted = [...filteredRows];
     sorted.sort((a, b) => {
-      if (sortField === 'assignedUser') {
-        const uA = a.assignedUser?.username || '';
-        const uB = b.assignedUser?.username || '';
-        const comp = uA.localeCompare(uB);
-        return sortDirection === 'asc' ? comp : -comp;
-      }
-
       let aVal = a[sortField];
       let bVal = b[sortField];
 
@@ -994,18 +987,6 @@ export default function Dashboard() {
                       )}
                     </div>
                   </th>
-                  {isAdmin && (
-                    <th onClick={() => handleSort('assignedUser')} style={{ cursor: 'pointer', minWidth: '130px', userSelect: 'none' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        Assigned To 
-                        {sortField === 'assignedUser' ? (
-                          sortDirection === 'asc' ? <ArrowUp size={13} style={{ color: 'var(--primary)' }} /> : <ArrowDown size={13} style={{ color: 'var(--primary)' }} />
-                        ) : (
-                          <ArrowUpDown size={12} style={{ opacity: 0.35 }} />
-                        )}
-                      </div>
-                    </th>
-                  )}
                   <th onClick={() => handleSort('solvedToday')} className="text-right" style={{ cursor: 'pointer', minWidth: '95px', userSelect: 'none' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, width: '100%' }}>
                       Today 
@@ -1118,22 +1099,6 @@ export default function Dashboard() {
                           {row.mentor || '—'}
                         </div>
                       </td>
-                      {isAdmin && (
-                        <td>
-                          {row.assignedUser ? (
-                            <span 
-                              className="cohort-tag" 
-                              style={{ background: '#e0f2fe', color: '#0369a1', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                              title={`Assigned to ${row.assignedUser.username}`}
-                            >
-                              <User size={12} />
-                              {row.assignedUser.username}
-                            </span>
-                          ) : (
-                            <span className="text-muted" style={{ opacity: 0.5, fontSize: '0.8rem' }}>Unassigned</span>
-                          )}
-                        </td>
-                      )}
                       <td className="text-right">
                         {(row.solvedToday || 0) > 0 ? (
                           <span className="today-badge">+{row.solvedToday}</span>
@@ -1192,7 +1157,7 @@ export default function Dashboard() {
                 })}
                 {paginatedRows.length === 0 && (
                   <tr>
-                    <td colSpan={isAdmin ? 17 : 16} className="text-center p-8 text-muted">
+                    <td colSpan={16} className="text-center p-8 text-muted">
                       No students found matching your search or filters.
                     </td>
                   </tr>
