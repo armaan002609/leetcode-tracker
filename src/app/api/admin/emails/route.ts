@@ -109,7 +109,20 @@ export async function POST(req: Request) {
             if (res.count > 0) {
               updatedCount += res.count;
             } else {
-              notFound.push(cleanRoll);
+              // Try case-insensitive lookup as fallback
+              const matched = await prisma.student.findFirst({
+                where: { rollNumber: { equals: cleanRoll, mode: 'insensitive' } },
+                select: { id: true }
+              });
+              if (matched) {
+                await prisma.student.update({
+                  where: { id: matched.id },
+                  data: { email: cleanEmail }
+                });
+                updatedCount++;
+              } else {
+                notFound.push(cleanRoll);
+              }
             }
           })
         );

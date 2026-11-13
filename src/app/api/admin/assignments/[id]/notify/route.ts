@@ -112,45 +112,43 @@ export async function POST(
       }
     }
 
-    // Process valid recipients in concurrent batches of 4
-    const BATCH_SIZE = 4;
-    for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
-      if (Date.now() - startTime > MAX_DURATION_MS) {
-        break;
-      }
-      const batch = recipients.slice(i, i + BATCH_SIZE);
-      await Promise.all(batch.map(async ({ student, targetEmail }) => {
-        try {
-          await sendAssignmentReminder({
-            to: targetEmail,
-            studentName: student.name,
-            rollNumber: student.rollNumber,
-            assignmentTitle: assignment.title || assignment.titleSlug,
-            titleSlug: assignment.titleSlug,
-          });
-          sent++;
-        } catch (err: any) {
-          failed++;
-          errors.push({ rollNumber: student.rollNumber, error: err.message || 'Failed to send email' });
-          console.error(`Failed to send reminder email to ${student.rollNumber} (${targetEmail}):`, err);
-        }
-      }));
+    const offset = typeof body.offset === 'number' ? Math.max(0, body.offset) : 0;
+    const limit = typeof body.limit === 'number' ? Math.min(50, Math.max(1, body.limit)) : 15;
 
-      // Small pause between batches
-      await new Promise((r) => setTimeout(r, 150));
+    // Slice for this specific chunk
+    const currentSlice = recipients.slice(offset, offset + limit);
+
+    for (const { student, targetEmail } of currentSlice) {
+      try {
+        await sendAssignmentReminder({
+          to: targetEmail,
+          studentName: student.name,
+          rollNumber: student.rollNumber,
+          assignmentTitle: assignment.title || assignment.titleSlug,
+          titleSlug: assignment.titleSlug,
+        });
+        sent++;
+      } catch (err: any) {
+        failed++;
+        errors.push({ rollNumber: student.rollNumber, error: err.message || 'Failed to send email' });
+        console.error(`Failed to send reminder email to ${student.rollNumber} (${targetEmail}):`, err);
+      }
     }
 
-    const isPartial = sent + failed < recipients.length;
+    const nextOffset = offset + currentSlice.length;
+    const hasMore = nextOffset < recipients.length;
 
     return NextResponse.json({
       success: true,
       assignmentTitle: assignment.title || assignment.titleSlug,
       totalPending: pendingList.length,
-      sent,
+      totalRecipients: recipients.length,
       skippedNoEmail: skippedNoEmail.length,
-      failed,
-      isPartial,
-      remaining: recipients.length - (sent + failed),
+      chunkSent: sent,
+      chunkFailed: failed,
+      offset,
+      nextOffset,
+      hasMore,
       skippedList: skippedNoEmail.slice(0, 20),
       errors: errors.slice(0, 10),
     });

@@ -40,6 +40,7 @@ export default function AssignmentsPage() {
   const [testEmailInput, setTestEmailInput] = useState("armaan002609@gmail.com");
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testSuccessMessage, setTestSuccessMessage] = useState("");
+  const [sendProgressText, setSendProgressText] = useState("");
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const [availableBranches, setAvailableBranches] = useState<string[]>([]);
@@ -206,23 +207,48 @@ export default function AssignmentsPage() {
     setIsSendingNotifications(true);
     setNotifyError("");
     setNotificationResult(null);
+    setSendProgressText("Starting email run...");
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    let offset = 0;
+    let hasMore = true;
+    let accumulatedSent = 0;
+    let accumulatedFailed = 0;
+    let finalData: any = null;
+
     try {
-      const res = await fetch(`/api/admin/assignments/${notifyingAssignment.id}/notify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ defaultDomain: defaultDomain.trim() }),
-        signal: controller.signal,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setNotifyError(data.error || "Failed to send notifications.");
-      } else {
-        setNotificationResult(data);
+      while (hasMore) {
+        const res = await fetch(`/api/admin/assignments/${notifyingAssignment.id}/notify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ defaultDomain: defaultDomain.trim(), offset, limit: 15 }),
+          signal: controller.signal,
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Failed to send notifications.");
+        }
+
+        accumulatedSent += (data.chunkSent || 0);
+        accumulatedFailed += (data.chunkFailed || 0);
+        offset = data.nextOffset;
+        hasMore = data.hasMore;
+        finalData = {
+          ...data,
+          sent: accumulatedSent,
+          failed: accumulatedFailed,
+        };
+
+        if (data.totalRecipients > 0) {
+          setSendProgressText(`Sent ${accumulatedSent} of ${data.totalRecipients} emails...`);
+        } else {
+          hasMore = false;
+        }
       }
+
+      setNotificationResult(finalData);
     } catch (err: any) {
       if (err.name === 'AbortError') {
         return;
@@ -231,6 +257,7 @@ export default function AssignmentsPage() {
     } finally {
       setIsSendingNotifications(false);
       abortControllerRef.current = null;
+      setSendProgressText("");
     }
   };
 
@@ -900,7 +927,7 @@ export default function AssignmentsPage() {
                     {isSendingNotifications ? (
                       <>
                         <div className="animate-spin" style={{ width: 14, height: 14, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
-                        <span>Sending Reminders...</span>
+                        <span>{sendProgressText || "Sending Reminders..."}</span>
                       </>
                     ) : (
                       <>

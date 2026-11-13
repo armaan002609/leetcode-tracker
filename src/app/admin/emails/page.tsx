@@ -77,14 +77,73 @@ export default function StudentEmailsPage() {
     fetchData();
   };
 
-  // Helper to extract values from diverse column names
-  const getCol = (row: any, keys: string[]) => {
+  // Smart extractor to find Roll Number and Email regardless of exact header naming
+  const extractRowData = (row: any) => {
     const rowKeys = Object.keys(row);
-    for (const k of keys) {
-      const match = rowKeys.find(rk => rk.toLowerCase().replace(/[^a-z0-9]/g, '') === k);
-      if (match && row[match] != null) return String(row[match]).trim();
+    let rollNumber = "";
+    let email = "";
+
+    // 1. Identify Roll Number column
+    for (const rk of rowKeys) {
+      const clean = rk.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (
+        clean.includes('roll') || 
+        clean.includes('reg') || 
+        clean.includes('urn') || 
+        clean.includes('uid') || 
+        clean === 'id' ||
+        clean === 'student' ||
+        clean === 'studentno' ||
+        clean === 'studentroll'
+      ) {
+        if (row[rk] != null && String(row[rk]).trim() !== "") {
+          rollNumber = String(row[rk]).trim();
+          break;
+        }
+      }
     }
-    return "";
+
+    // 2. Identify Email column by header
+    for (const rk of rowKeys) {
+      const clean = rk.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (clean.includes('email') || clean.includes('mail') || clean.includes('gmail')) {
+        if (row[rk] != null) {
+          const val = String(row[rk]).trim();
+          if (val.includes('@')) {
+            email = val.toLowerCase();
+            break;
+          }
+        }
+      }
+    }
+
+    // 3. Fallback: inspect raw cell values for email pattern
+    if (!email) {
+      for (const rk of rowKeys) {
+        if (row[rk] != null) {
+          const val = String(row[rk]).trim();
+          if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+            email = val.toLowerCase();
+            break;
+          }
+        }
+      }
+    }
+
+    // 4. Fallback: inspect raw cell values for roll number pattern
+    if (!rollNumber) {
+      for (const rk of rowKeys) {
+        if (row[rk] != null) {
+          const val = String(row[rk]).trim();
+          if (/^\d{5,12}$/.test(val)) {
+            rollNumber = val;
+            break;
+          }
+        }
+      }
+    }
+
+    return { rollNumber, email };
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,15 +163,14 @@ export default function StudentEmailsPage() {
           complete: (results) => {
             const rows: Array<{ rollNumber: string; email: string }> = [];
             results.data.forEach((row: any) => {
-              const rollNumber = getCol(row, ["rollnumber", "rollno", "id", "roll", "studentroll"]);
-              const email = getCol(row, ["email", "emailid", "mail", "studentemail"]);
+              const { rollNumber, email } = extractRowData(row);
               if (rollNumber && email && email.includes("@")) {
-                rows.push({ rollNumber, email: email.toLowerCase() });
+                rows.push({ rollNumber, email });
               }
             });
 
             if (rows.length === 0) {
-              setBulkError("No valid rows found. File must contain 'Roll Number' and 'Email' columns.");
+              setBulkError("No valid rows found. File must contain Roll Number and Email columns.");
             } else {
               setParsedRows(rows);
             }
@@ -134,15 +192,14 @@ export default function StudentEmailsPage() {
 
             const rows: Array<{ rollNumber: string; email: string }> = [];
             json.forEach((row: any) => {
-              const rollNumber = getCol(row, ["rollnumber", "rollno", "id", "roll", "studentroll"]);
-              const email = getCol(row, ["email", "emailid", "mail", "studentemail"]);
+              const { rollNumber, email } = extractRowData(row);
               if (rollNumber && email && email.includes("@")) {
-                rows.push({ rollNumber, email: email.toLowerCase() });
+                rows.push({ rollNumber, email });
               }
             });
 
             if (rows.length === 0) {
-              setBulkError("No valid rows found. File must contain 'Roll Number' and 'Email' columns.");
+              setBulkError("No valid rows found. File must contain Roll Number and Email columns.");
             } else {
               setParsedRows(rows);
             }

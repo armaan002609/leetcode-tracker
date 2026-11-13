@@ -8,6 +8,8 @@ export interface SendReminderOptions {
   titleSlug: string;
 }
 
+let cachedTransporter: nodemailer.Transporter | null = null;
+
 export function getEmailTransporter() {
   const user = process.env.EMAIL_USER || 'leetcodetrackernotify@gmail.com';
   const pass = process.env.EMAIL_PASS;
@@ -16,13 +18,20 @@ export function getEmailTransporter() {
     throw new Error('EMAIL_PASS is not configured. Please add the 16-character Google App Password in .env or Vercel Environment Variables.');
   }
 
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user,
-      pass,
-    },
-  });
+  if (!cachedTransporter) {
+    cachedTransporter = nodemailer.createTransport({
+      service: 'gmail',
+      pool: true,
+      maxConnections: 1,
+      maxMessages: 100,
+      auth: {
+        user,
+        pass,
+      },
+    });
+  }
+
+  return cachedTransporter;
 }
 
 export async function sendAssignmentReminder(options: SendReminderOptions) {
