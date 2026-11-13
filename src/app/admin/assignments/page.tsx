@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Plus, BookOpen, Trash2, Users, Download, Edit2, X } from "lucide-react";
+import { ArrowLeft, Plus, BookOpen, Trash2, Users, Download, Edit2, X, Mail, Send, CheckCircle2, AlertTriangle, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -29,6 +29,13 @@ export default function AssignmentsPage() {
   const [editTargetBranch, setEditTargetBranch] = useState("");
   const [editTargetSection, setEditTargetSection] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Email Notification States
+  const [notifyingAssignment, setNotifyingAssignment] = useState<any>(null);
+  const [isSendingNotifications, setIsSendingNotifications] = useState(false);
+  const [notificationResult, setNotificationResult] = useState<any>(null);
+  const [defaultDomain, setDefaultDomain] = useState("");
+  const [notifyError, setNotifyError] = useState("");
 
   const [availableBranches, setAvailableBranches] = useState<string[]>([]);
 
@@ -163,6 +170,37 @@ export default function AssignmentsPage() {
       console.error(e);
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const openNotifyModal = (assignment: any) => {
+    setNotifyingAssignment(assignment);
+    setNotificationResult(null);
+    setNotifyError("");
+  };
+
+  const handleSendNotifications = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!notifyingAssignment) return;
+    setIsSendingNotifications(true);
+    setNotifyError("");
+    setNotificationResult(null);
+    try {
+      const res = await fetch(`/api/admin/assignments/${notifyingAssignment.id}/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ defaultDomain: defaultDomain.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setNotifyError(data.error || "Failed to send notifications.");
+      } else {
+        setNotificationResult(data);
+      }
+    } catch (err: any) {
+      setNotifyError(err.message || "Network error sending notifications.");
+    } finally {
+      setIsSendingNotifications(false);
     }
   };
 
@@ -360,6 +398,14 @@ export default function AssignmentsPage() {
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
                               <span>{new Date(a.createdAt).toLocaleDateString()}</span>
                               <button 
+                                onClick={(e) => { e.stopPropagation(); openNotifyModal(a); }}
+                                className="icon-btn"
+                                title="Send Email Reminder to Pending Students"
+                                style={{ color: '#f59e0b', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                              >
+                                <Mail size={16} />
+                              </button>
+                              <button 
                                 onClick={(e) => { e.stopPropagation(); openEditModal(a); }}
                                 className="icon-btn"
                                 title="Edit"
@@ -399,40 +445,62 @@ export default function AssignmentsPage() {
                                     <div className="skeleton-row" style={{ width: '90%' }}></div>
                                   </div>
                                 ) : assignmentDetails ? (
-                                  <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                    <table className="data-table" style={{ margin: 0 }}>
-                                      <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--background)' }}>
-                                        <tr>
-                                          <th style={{padding: '8px 16px'}}>Roll Number</th>
-                                          <th style={{padding: '8px 16px'}}>Name</th>
-                                          <th style={{padding: '8px 16px'}}>Section</th>
-                                          <th style={{padding: '8px 16px'}}>Status</th>
-                                          <th style={{padding: '8px 16px'}}>Completed At</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {assignmentDetails.studentAssignments.map((sa: any) => (
-                                          <tr key={sa.student.id}>
-                                            <td style={{padding: '8px 16px'}}>{sa.student.rollNumber}</td>
-                                            <td style={{padding: '8px 16px'}}>{sa.student.name}</td>
-                                            <td style={{padding: '8px 16px'}}>{sa.student.branch || ''} {sa.student.section || ''}</td>
-                                            <td style={{padding: '8px 16px'}}>
-                                              <span className={`status-badge ${sa.status === 'completed' ? 'success' : 'pending'}`}>
-                                                {sa.status === 'completed' ? 'Done' : 'Pending'}
-                                              </span>
-                                            </td>
-                                            <td style={{padding: '8px 16px', color: 'var(--muted)', fontSize: '0.85rem'}}>
-                                              {sa.completedAt ? new Intl.DateTimeFormat('en-IN', {
-                                                timeZone: 'Asia/Kolkata',
-                                                day: '2-digit', month: '2-digit', year: 'numeric',
-                                                hour: '2-digit', minute: '2-digit', second: '2-digit',
-                                                hour12: true
-                                              }).format(new Date(sa.completedAt)) : '-'}
-                                            </td>
+                                  <div>
+                                    <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                      <div style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>
+                                        <strong style={{ color: '#0f172a' }}>{assignmentDetails.studentAssignments.filter((sa: any) => sa.status === 'pending').length}</strong> pending / <strong>{assignmentDetails.studentAssignments.length}</strong> total assigned
+                                      </div>
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); openNotifyModal(a); }}
+                                        className="btn btn-primary"
+                                        style={{ fontSize: '0.82rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', background: '#f59e0b', borderColor: '#f59e0b', color: 'white' }}
+                                      >
+                                        <Mail size={14} /> Send Email Reminder ({assignmentDetails.studentAssignments.filter((sa: any) => sa.status === 'pending').length} Pending)
+                                      </button>
+                                    </div>
+                                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                      <table className="data-table" style={{ margin: 0 }}>
+                                        <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--background)' }}>
+                                          <tr>
+                                            <th style={{padding: '8px 16px'}}>Roll Number</th>
+                                            <th style={{padding: '8px 16px'}}>Name</th>
+                                            <th style={{padding: '8px 16px'}}>Email</th>
+                                            <th style={{padding: '8px 16px'}}>Section</th>
+                                            <th style={{padding: '8px 16px'}}>Status</th>
+                                            <th style={{padding: '8px 16px'}}>Completed At</th>
                                           </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
+                                        </thead>
+                                        <tbody>
+                                          {assignmentDetails.studentAssignments.map((sa: any) => (
+                                            <tr key={sa.student.id}>
+                                              <td style={{padding: '8px 16px'}}>{sa.student.rollNumber}</td>
+                                              <td style={{padding: '8px 16px'}}>{sa.student.name}</td>
+                                              <td style={{padding: '8px 16px', color: 'var(--muted)', fontSize: '0.85rem'}}>
+                                                {sa.student.email ? (
+                                                  <span style={{ color: 'var(--primary)' }}>{sa.student.email}</span>
+                                                ) : (
+                                                  <span style={{ opacity: 0.5 }}>-</span>
+                                                )}
+                                              </td>
+                                              <td style={{padding: '8px 16px'}}>{sa.student.branch || ''} {sa.student.section || ''}</td>
+                                              <td style={{padding: '8px 16px'}}>
+                                                <span className={`status-badge ${sa.status === 'completed' ? 'success' : 'pending'}`}>
+                                                  {sa.status === 'completed' ? 'Done' : 'Pending'}
+                                                </span>
+                                              </td>
+                                              <td style={{padding: '8px 16px', color: 'var(--muted)', fontSize: '0.85rem'}}>
+                                                {sa.completedAt ? new Intl.DateTimeFormat('en-IN', {
+                                                  timeZone: 'Asia/Kolkata',
+                                                  day: '2-digit', month: '2-digit', year: 'numeric',
+                                                  hour: '2-digit', minute: '2-digit', second: '2-digit',
+                                                  hour12: true
+                                                }).format(new Date(sa.completedAt)) : '-'}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
                                   </div>
                                 ) : (
                                   <div style={{ padding: '24px', textAlign: 'center', color: 'var(--destructive)' }}>Failed to load details.</div>
@@ -592,6 +660,150 @@ export default function AssignmentsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Email Notification Reminder Modal */}
+      {notifyingAssignment && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(0,0,0,0.5)', 
+          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px'
+        }}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '540px', boxShadow: 'var(--shadow-xl)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '8px', background: '#fef3c7', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Mail size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>Send Email Reminders</h3>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: 2 }}>
+                    From: <strong style={{ color: '#0f172a' }}>leetcodetrackernotify@gmail.com</strong>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setNotifyingAssignment(null); setNotificationResult(null); setNotifyError(""); }} 
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}
+              >
+                <X size={20}/>
+              </button>
+            </div>
+
+            {/* Assignment Summary Box */}
+            <div style={{ background: '#f8fafc', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '16px', marginBottom: '20px' }}>
+              <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '4px' }}>
+                Assigned Problem
+              </div>
+              <div style={{ fontSize: '1rem', fontWeight: 600, color: '#0f172a', marginBottom: '8px' }}>
+                {notifyingAssignment.title || notifyingAssignment.titleSlug}
+              </div>
+              <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem' }}>
+                <div>Target: <strong>{notifyingAssignment.targetBranch || 'All Branches'}</strong></div>
+                <div>Pending: <strong style={{ color: '#ef4444' }}>{notifyingAssignment.totalAssigned - notifyingAssignment.completedCount} students</strong></div>
+              </div>
+            </div>
+
+            {notifyError && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', padding: '12px 16px', borderRadius: '8px', marginBottom: '20px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertCircle size={18} />
+                <span>{notifyError}</span>
+              </div>
+            )}
+
+            {notificationResult ? (
+              <div>
+                <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontWeight: 700, fontSize: '1rem', marginBottom: '8px' }}>
+                    <CheckCircle2 size={20} />
+                    <span>Notification Run Completed!</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '12px', textAlign: 'center' }}>
+                    <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid #d1fae5' }}>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#059669' }}>{notificationResult.sent}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Emails Sent</div>
+                    </div>
+                    <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid #fef3c7' }}>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#f59e0b' }}>{notificationResult.skippedNoEmail}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>No Email</div>
+                    </div>
+                    <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid #fee2e2' }}>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#ef4444' }}>{notificationResult.failed}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Failed</div>
+                    </div>
+                  </div>
+                </div>
+
+                {notificationResult.skippedNoEmail > 0 && (
+                  <div style={{ marginBottom: '20px', fontSize: '0.85rem', color: '#64748b', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                    <strong>Note:</strong> {notificationResult.skippedNoEmail} students were skipped because they do not have an email address in the database. You can upload an Excel/CSV file with an <code>Email</code> column to reach them, or provide an institutional domain above.
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => { setNotifyingAssignment(null); setNotificationResult(null); }} 
+                    className="btn btn-primary"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSendNotifications} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+                    College Domain Fallback (Optional)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={defaultDomain}
+                    onChange={(e) => setDefaultDomain(e.target.value)}
+                    placeholder="e.g. college.edu"
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                  />
+                  <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '4px', lineHeight: 1.4 }}>
+                    If a student doesn&apos;t have an email in the database, the system will fallback to <code>[RollNumber]@[domain]</code>.
+                  </div>
+                </div>
+
+                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '12px 14px', fontSize: '0.85rem', color: '#92400e', lineHeight: 1.5 }}>
+                  This will send a personalized HTML email reminder with a direct link to solve this problem to all <strong>{notifyingAssignment.totalAssigned - notifyingAssignment.completedCount} students</strong> who currently have a pending status.
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setNotifyingAssignment(null)} 
+                    className="btn btn-outline"
+                    disabled={isSendingNotifications}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={isSendingNotifications || (notifyingAssignment.totalAssigned - notifyingAssignment.completedCount === 0)} 
+                    className="btn btn-primary"
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f59e0b', borderColor: '#f59e0b', color: 'white' }}
+                  >
+                    {isSendingNotifications ? (
+                      <>
+                        <div className="animate-spin" style={{ width: 14, height: 14, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
+                        <span>Sending Reminders...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={15} />
+                        <span>Send Reminders ({notifyingAssignment.totalAssigned - notifyingAssignment.completedCount} Pending)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

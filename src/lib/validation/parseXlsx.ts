@@ -27,6 +27,7 @@ export async function parseXlsx(file: File): Promise<{ rows: Omit<StudentRow, 'i
           const rawRow = {
             rollNumber: getVal(row, ['rollnumber', 'rollno', 'id', 'roll']),
             name: getVal(row, ['name', 'studentname', 'student']),
+            email: getVal(row, ['email', 'emailid', 'mail', 'studentemail']) || undefined,
             branch: getVal(row, ['branch', 'department', 'dept']),
             semester: getVal(row, ['semester', 'sem']),
             section: getVal(row, ['section', 'sec']),

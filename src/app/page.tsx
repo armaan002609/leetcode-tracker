@@ -1241,6 +1241,11 @@ export default function Dashboard() {
                         <span className="font-medium">Sec:</span> {selectedStudent.section}
                       </div>
                     )}
+                    {selectedStudent.email && (
+                      <div style={{background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: '100px'}}>
+                        <span className="font-medium">Email:</span> {selectedStudent.email}
+                      </div>
+                    )}
                     {selectedStudent.mentor && (
                       <div style={{background: 'rgba(255,255,255,0.2)', padding: '4px 12px', borderRadius: '100px'}}>
                         <span className="font-medium">Mentor:</span> {selectedStudent.mentor}

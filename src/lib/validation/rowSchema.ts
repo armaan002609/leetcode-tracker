@@ -4,6 +4,7 @@ import { ScrapeStatus } from '../scraping/scrapeProfile';
 export const StudentInputSchema = z.object({
   rollNumber: z.string().min(1, 'Roll Number is required').max(50, 'Max 50 characters').trim(),
   name: z.string().min(1, 'Name is required').max(200, 'Max 200 characters').trim(),
+  email: z.string().trim().email('Invalid email address').max(200).optional().or(z.literal('')).nullable(),
   branch: z.string().max(100, 'Max 100 characters').trim().optional(),
   semester: z.string().max(50, 'Max 50 characters').trim().optional(),
   section: z.string().max(50, 'Max 50 characters').trim().optional(),

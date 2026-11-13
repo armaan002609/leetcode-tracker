@@ -72,6 +72,7 @@ export async function POST(req: Request) {
             where: { rollNumber: student.rollNumber },
             update: {
               name: student.name,
+              ...(student.email ? { email: student.email } : {}),
               branch: student.branch,
               semester: student.semester,
               section: student.section,
@@ -82,6 +83,7 @@ export async function POST(req: Request) {
             create: {
               rollNumber: student.rollNumber,
               name: student.name,
+              email: student.email || null,
               branch: student.branch,
               semester: student.semester,
               section: student.section,

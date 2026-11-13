@@ -19,7 +19,7 @@ export default function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [manualForm, setManualForm] = useState({
-    name: '', rollNumber: '', branch: '', semester: '1st', section: 'A', mentor: '', url: ''
+    name: '', rollNumber: '', email: '', branch: '', semester: '1st', section: 'A', mentor: '', url: ''
   });
   const [mentorDesignation, setMentorDesignation] = useState('Mr.');
   const [manualError, setManualError] = useState('');
@@ -207,7 +207,7 @@ export default function UploadPage() {
                       <UploadCloud className="mx-auto text-muted mb-4" size={48} />
                       <h3 className="text-lg font-medium mb-2">Upload Roster File</h3>
                       <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
-                        Accepts .csv or .xlsx files up to 5MB (max 1000 rows). Must contain Roll Number, Name, Branch, Semester, Section, Mentor Name, and LeetCode URL columns.
+                        Accepts .csv or .xlsx files up to 5MB (max 1000 rows). Must contain Roll Number, Name, Branch, Semester, Section, Mentor Name, and LeetCode URL columns. Email column is optional.
                       </p>
                       
                       <input 
@@ -295,6 +295,10 @@ export default function UploadPage() {
                       <input required type="text" value={manualForm.rollNumber} onChange={e => setManualForm({...manualForm, rollNumber: e.target.value})} style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Email (Optional)</label>
+                      <input type="email" value={manualForm.email} onChange={e => setManualForm({...manualForm, email: e.target.value})} placeholder="student@example.com" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Branch *</label>
                       <input required type="text" value={manualForm.branch} onChange={e => setManualForm({...manualForm, branch: e.target.value})} placeholder="e.g. CSE" style={{ padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }} />
                     </div>
@@ -337,7 +341,7 @@ export default function UploadPage() {
                     
                     <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px', paddingTop: '20px', borderTop: '1px solid var(--surface-border)' }}>
                       <button type="button" onClick={() => {
-                        setManualForm({name: '', rollNumber: '', branch: '', semester: '1st', section: 'A', mentor: '', url: ''});
+                        setManualForm({name: '', rollNumber: '', email: '', branch: '', semester: '1st', section: 'A', mentor: '', url: ''});
                         setMentorDesignation('Mr.');
                       }} className="btn">Clear</button>
                       <button type="submit" disabled={isSubmittingManual} className="btn btn-primary">

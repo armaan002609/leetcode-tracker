@@ -12,6 +12,7 @@ model Student {
   id         String  @id @default(uuid())
   rollNumber String  @unique
   name       String
+  email      String?
   branch     String?
   semester   String?
   section    String?
