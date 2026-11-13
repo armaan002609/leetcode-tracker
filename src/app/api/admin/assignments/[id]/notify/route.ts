@@ -48,13 +48,35 @@ export async function POST(
     }
 
     let defaultDomain = '';
+    let body: any = {};
     try {
-      const body = await req.json();
+      body = await req.json();
       if (body && typeof body.defaultDomain === 'string') {
         defaultDomain = body.defaultDomain.trim().replace(/^@/, '');
       }
     } catch (e) {
       // Body is optional
+    }
+
+    // Direct test email support
+    if (body.testEmail && typeof body.testEmail === 'string' && body.testEmail.includes('@')) {
+      await sendAssignmentReminder({
+        to: body.testEmail.trim(),
+        studentName: (session.user as any)?.name || 'Admin (Test)',
+        rollNumber: 'DEMO',
+        assignmentTitle: assignment.title || assignment.titleSlug,
+        titleSlug: assignment.titleSlug,
+      });
+      return NextResponse.json({
+        success: true,
+        isTest: true,
+        assignmentTitle: assignment.title || assignment.titleSlug,
+        message: `Test preview email successfully sent to ${body.testEmail.trim()}!`,
+        totalPending: 1,
+        sent: 1,
+        skippedNoEmail: 0,
+        failed: 0,
+      });
     }
 
     const pendingList = assignment.studentAssignments;

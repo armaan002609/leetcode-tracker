@@ -37,6 +37,9 @@ export default function AssignmentsPage() {
   const [notificationResult, setNotificationResult] = useState<any>(null);
   const [defaultDomain, setDefaultDomain] = useState("");
   const [notifyError, setNotifyError] = useState("");
+  const [testEmailInput, setTestEmailInput] = useState("armaan002609@gmail.com");
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testSuccessMessage, setTestSuccessMessage] = useState("");
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const [availableBranches, setAvailableBranches] = useState<string[]>([]);
@@ -228,6 +231,30 @@ export default function AssignmentsPage() {
     } finally {
       setIsSendingNotifications(false);
       abortControllerRef.current = null;
+    }
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!notifyingAssignment || !testEmailInput) return;
+    setIsSendingTest(true);
+    setNotifyError("");
+    setTestSuccessMessage("");
+    try {
+      const res = await fetch(`/api/admin/assignments/${notifyingAssignment.id}/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ testEmail: testEmailInput.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setNotifyError(data.error || "Failed to send test email.");
+      } else {
+        setTestSuccessMessage(data.message || `Test email successfully sent to ${testEmailInput}! Check your inbox.`);
+      }
+    } catch (e: any) {
+      setNotifyError(e.message || "Failed to send test email.");
+    } finally {
+      setIsSendingTest(false);
     }
   };
 
@@ -772,8 +799,22 @@ export default function AssignmentsPage() {
                 </div>
 
                 {notificationResult.skippedNoEmail > 0 && (
-                  <div style={{ marginBottom: '20px', fontSize: '0.85rem', color: '#64748b', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                    <strong>Note:</strong> {notificationResult.skippedNoEmail} students were skipped because they do not have an email address in the database. You can upload an Excel/CSV file with an <code>Email</code> column to reach them, or provide an institutional domain above.
+                  <div style={{ marginBottom: '20px', fontSize: '0.85rem', color: '#64748b', background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
+                    <div style={{ marginBottom: '8px', color: '#0f172a' }}>
+                      <strong>Why were {notificationResult.skippedNoEmail} students skipped?</strong>
+                    </div>
+                    <div>
+                      These students do not have an email address stored in the database yet. You can upload an Excel/CSV file with student emails or enter them manually.
+                    </div>
+                    <div style={{ marginTop: '12px' }}>
+                      <Link 
+                        href="/admin/emails" 
+                        className="btn btn-outline" 
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '6px 12px', textDecoration: 'none' }}
+                      >
+                        <Mail size={14} /> Open Student Emails Page &rarr;
+                      </Link>
+                    </div>
                   </div>
                 )}
 
@@ -789,6 +830,39 @@ export default function AssignmentsPage() {
               </div>
             ) : (
               <form onSubmit={handleSendNotifications} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Send Test Email Section */}
+                <div style={{ background: '#f8fafc', border: '1px dashed var(--surface-border)', borderRadius: '8px', padding: '12px 14px' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                    Send Test Preview Email to Yourself
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '8px' }}>
+                    Verify how the email looks in your inbox before sending to students.
+                  </div>
+                  {testSuccessMessage && (
+                    <div style={{ color: '#059669', fontSize: '0.82rem', marginBottom: '8px', fontWeight: 500 }}>
+                      ✅ {testSuccessMessage}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input 
+                      type="email"
+                      value={testEmailInput}
+                      onChange={(e) => setTestEmailInput(e.target.value)}
+                      placeholder="armaan002609@gmail.com"
+                      style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.85rem' }}
+                    />
+                    <button
+                      type="button"
+                      disabled={isSendingTest || !testEmailInput}
+                      onClick={handleSendTestEmail}
+                      className="btn btn-outline"
+                      style={{ padding: '8px 12px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
+                    >
+                      {isSendingTest ? "Sending..." : "Send Test Email"}
+                    </button>
+                  </div>
+                </div>
+
                 <div>
                   <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
                     College Domain Fallback (Optional)
