@@ -138,3 +138,163 @@ export async function sendAssignmentReminder(options: SendReminderOptions) {
     },
   });
 }
+
+export interface SendMultiAssignmentOptions {
+  to?: string;
+  cc?: string[];
+  bcc?: string[];
+  assignments: Array<{ title?: string | null; titleSlug: string }>;
+  recipientName?: string;
+  isTest?: boolean;
+}
+
+export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOptions) {
+  const { to, cc, bcc, assignments, recipientName = 'Students', isTest = false } = options;
+  const senderEmail = process.env.EMAIL_USER || 'leetcodetrackernotify@gmail.com';
+  const transporter = getEmailTransporter();
+
+  if (!assignments || assignments.length === 0) {
+    throw new Error('At least one assignment must be provided for the reminder email.');
+  }
+
+  const primaryTitle = assignments[0].title || assignments[0].titleSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const subject = assignments.length === 1
+    ? `${isTest ? '[TEST PREVIEW] ' : ''}LeetCode Assignment: ${primaryTitle}`
+    : `${isTest ? '[TEST PREVIEW] ' : ''}LeetCode Assignments: ${primaryTitle} (+${assignments.length - 1} more)`;
+
+  const problemsHtml = assignments.map((a, index) => {
+    const title = a.title || a.titleSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const problemUrl = `https://leetcode.com/problems/${a.titleSlug}/`;
+    return `
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #f59e0b; border-radius: 8px; padding: 16px 20px; margin-bottom: 14px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="vertical-align: top;">
+              <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 4px;">
+                Problem #${index + 1}
+              </div>
+              <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
+                ${title}
+              </div>
+              <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">
+                Slug: <code>${a.titleSlug}</code>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding-top: 6px;">
+              <a href="${problemUrl}" target="_blank" style="display: inline-block; background-color: #f59e0b; color: #ffffff; font-weight: 600; font-size: 13px; text-decoration: none; padding: 8px 16px; border-radius: 6px;">
+                Solve on LeetCode &rarr;
+              </a>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+  }).join('');
+
+  const plainTextList = assignments.map((a, i) => {
+    const title = a.title || a.titleSlug;
+    return `${i + 1}. ${title} (https://leetcode.com/problems/${a.titleSlug}/)`;
+  }).join('\n');
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pending LeetCode Assignments Reminder</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); overflow: hidden; border: 1px solid #e2e8f0;" cellspacing="0" cellpadding="0">
+          
+          <!-- Header Banner -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 26px 30px; text-align: left;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <div style="display: inline-block; width: 34px; height: 34px; line-height: 34px; background-color: #f59e0b; color: #ffffff; font-weight: 800; font-size: 19px; border-radius: 8px; text-align: center; margin-right: 10px; vertical-align: middle;">L</div>
+                    <span style="color: #ffffff; font-size: 19px; font-weight: 700; letter-spacing: -0.5px; vertical-align: middle;">LeetCode Tracker</span>
+                  </td>
+                  <td align="right">
+                    <span style="display: inline-block; background-color: rgba(245, 158, 11, 0.2); color: #fde68a; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px;">
+                      ${assignments.length} ${assignments.length === 1 ? 'Problem' : 'Problems'}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          ${isTest ? `
+          <!-- Test Notice Banner -->
+          <tr>
+            <td style="background-color: #eff6ff; border-bottom: 1px solid #bfdbfe; padding: 10px 24px; text-align: center; font-size: 12px; font-weight: 600; color: #1d4ed8;">
+              ℹ️ TEST PREVIEW EMAIL &bull; This is how the reminder will look to students.
+            </td>
+          </tr>` : ''}
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 28px 30px;">
+              <p style="margin: 0 0 14px 0; font-size: 16px; line-height: 1.5; color: #334155;">
+                Hello <strong>${recipientName}</strong>,
+              </p>
+              
+              <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
+                This is a friendly reminder from your mentor that you have <strong>${assignments.length} pending LeetCode assignment${assignments.length > 1 ? 's' : ''}</strong> waiting for your submission. Please solve and submit the following problem${assignments.length > 1 ? 's' : ''}:
+              </p>
+
+              <!-- Problems List -->
+              ${problemsHtml}
+
+              <div style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px 16px; margin-top: 20px;">
+                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #92400e;">
+                  <strong>Note:</strong> Once you submit an Accepted (AC) solution on LeetCode with your registered LeetCode account, the tracker will automatically record your completion on the next synchronization.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 18px 30px; text-align: center; font-size: 12px; color: #94a3b8;">
+              <p style="margin: 0 0 4px 0;">This is an automated notification from LeetCode Tracker.</p>
+              <p style="margin: 0;">Sent via ${senderEmail}</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  // Destination configuration:
+  // If 'to' is specified explicitly (like a test email), send directly to 'to'.
+  // If bulk send with BCC, set 'to' to the sender address so students don't see each other's emails, and put recipients in 'bcc'.
+  const effectiveTo = to || `"LeetCode Students" <${senderEmail}>`;
+
+  return transporter.sendMail({
+    from: `"LeetCode Tracker" <${senderEmail}>`,
+    to: effectiveTo,
+    cc: cc && cc.length > 0 ? cc : undefined,
+    bcc: bcc && bcc.length > 0 ? bcc : undefined,
+    replyTo: senderEmail,
+    subject,
+    text: `Hello ${recipientName},\n\nYou have ${assignments.length} pending LeetCode assignment(s) waiting for submission:\n\n${plainTextList}\n\nPlease submit your solution on LeetCode. Once accepted, your progress will be updated automatically.\n\nBest regards,\nLeetCode Tracker`,
+    html: htmlContent,
+    headers: {
+      'X-Priority': '3',
+      'X-MSMail-Priority': 'Normal',
+      'Importance': 'Normal',
+    },
+  });
+}
