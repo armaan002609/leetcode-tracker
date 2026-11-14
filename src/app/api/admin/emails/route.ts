@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 
@@ -83,49 +84,104 @@ export async function POST(req: Request) {
 
     // Case 1: Bulk array of updates [{ rollNumber, email }]
     if (Array.isArray(body.updates)) {
-      const updates: Array<{ rollNumber: string; email: string }> = body.updates.filter(
+      const rawUpdates: Array<{ rollNumber: string; email: string }> = body.updates.filter(
         (u: any) => u.rollNumber && u.email && typeof u.email === 'string' && u.email.includes('@')
       );
 
-      if (updates.length === 0) {
+      if (rawUpdates.length === 0) {
         return NextResponse.json({ error: 'No valid rollNumber + email pairs provided.' }, { status: 400 });
       }
 
-      let updatedCount = 0;
+      // Deduplicate updates by roll number (case-insensitive, trimmed)
+      const emailByRoll = new Map<string, string>();
+      for (const u of rawUpdates) {
+        const roll = String(u.rollNumber).trim();
+        const email = String(u.email).trim().toLowerCase();
+        if (roll && email && email.includes('@')) {
+          emailByRoll.set(roll.toLowerCase(), email);
+        }
+      }
+
+      const rollList = Array.from(emailByRoll.keys());
+
+      // 1. Fetch matching students in batches of 500 using indexed query
+      const existingStudents: Array<{ id: string; rollNumber: string }> = [];
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < rollList.length; i += BATCH_SIZE) {
+        const batch = rollList.slice(i, i + BATCH_SIZE);
+        const found = await prisma.student.findMany({
+          where: {
+            rollNumber: { in: batch, mode: 'insensitive' }
+          },
+          select: {
+            id: true,
+            rollNumber: true,
+          }
+        });
+        existingStudents.push(...found);
+      }
+
+      // 2. Map existing students by lowercase roll number
+      const studentMap = new Map<string, string>(); // lowerRoll -> studentId
+      for (const s of existingStudents) {
+        studentMap.set(s.rollNumber.trim().toLowerCase(), s.id);
+      }
+
+      const toUpdate: Array<{ id: string; email: string; rollNumber: string }> = [];
       const notFound: string[] = [];
 
-      // Process in chunks of 50
-      const CHUNK_SIZE = 50;
-      for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
-        const chunk = updates.slice(i, i + CHUNK_SIZE);
-        await Promise.all(
-          chunk.map(async ({ rollNumber, email }) => {
-            const cleanRoll = String(rollNumber).trim();
-            const cleanEmail = String(email).trim().toLowerCase();
-            const res = await prisma.student.updateMany({
-              where: { rollNumber: cleanRoll },
-              data: { email: cleanEmail },
-            });
-            if (res.count > 0) {
-              updatedCount += res.count;
-            } else {
-              // Try case-insensitive lookup as fallback
-              const matched = await prisma.student.findFirst({
-                where: { rollNumber: { equals: cleanRoll, mode: 'insensitive' } },
-                select: { id: true }
+      for (const u of rawUpdates) {
+        const cleanRoll = String(u.rollNumber).trim();
+        const cleanEmail = String(u.email).trim().toLowerCase();
+        const studentId = studentMap.get(cleanRoll.toLowerCase());
+        if (studentId) {
+          toUpdate.push({
+            id: studentId,
+            email: cleanEmail,
+            rollNumber: cleanRoll,
+          });
+        } else {
+          if (!notFound.includes(cleanRoll)) {
+            notFound.push(cleanRoll);
+          }
+        }
+      }
+
+      let updatedCount = 0;
+
+      // 3. Ultra-fast bulk update using PostgreSQL VALUES in a single query
+      if (toUpdate.length > 0) {
+        try {
+          const SQL_CHUNK = 250;
+          for (let i = 0; i < toUpdate.length; i += SQL_CHUNK) {
+            const chunk = toUpdate.slice(i, i + SQL_CHUNK);
+            const valueRows = chunk.map(
+              item => Prisma.sql`(${item.id}::text, ${item.email}::text)`
+            );
+            await prisma.$executeRaw`
+              UPDATE "Student" AS s
+              SET "email" = c.email,
+                  "updatedAt" = NOW()
+              FROM (VALUES ${Prisma.join(valueRows)}) AS c(id, email)
+              WHERE s.id = c.id
+            `;
+            updatedCount += chunk.length;
+          }
+        } catch (rawError) {
+          console.warn('Bulk raw SQL update failed, falling back to sequential Prisma updates:', rawError);
+          // Safe fallback: sequential loop (one connection at a time, never exhausts pool)
+          for (const item of toUpdate) {
+            try {
+              await prisma.student.update({
+                where: { id: item.id },
+                data: { email: item.email }
               });
-              if (matched) {
-                await prisma.student.update({
-                  where: { id: matched.id },
-                  data: { email: cleanEmail }
-                });
-                updatedCount++;
-              } else {
-                notFound.push(cleanRoll);
-              }
+              updatedCount++;
+            } catch (err) {
+              console.error(`Failed to update student ${item.rollNumber}:`, err);
             }
-          })
-        );
+          }
+        }
       }
 
       return NextResponse.json({
@@ -142,16 +198,22 @@ export async function POST(req: Request) {
       const cleanRoll = String(body.rollNumber).trim();
       const cleanEmail = body.email ? String(body.email).trim().toLowerCase() : null;
 
-      const student = await prisma.student.findUnique({
+      let student = await prisma.student.findUnique({
         where: { rollNumber: cleanRoll },
       });
+
+      if (!student) {
+        student = await prisma.student.findFirst({
+          where: { rollNumber: { equals: cleanRoll, mode: 'insensitive' } }
+        });
+      }
 
       if (!student) {
         return NextResponse.json({ error: `Student with roll number "${cleanRoll}" not found.` }, { status: 404 });
       }
 
       const updated = await prisma.student.update({
-        where: { rollNumber: cleanRoll },
+        where: { id: student.id },
         data: { email: cleanEmail },
         select: {
           id: true,
