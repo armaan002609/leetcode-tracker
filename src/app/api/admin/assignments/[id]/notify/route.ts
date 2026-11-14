@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sendAssignmentReminder } from '@/lib/email';
+import { isAssignmentMatch } from '@/lib/scraping/titleNormalizer';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,7 +85,7 @@ export async function POST(
     const filterBranch = typeof body.filterBranch === 'string' ? body.filterBranch.trim() : '';
     const filterSection = typeof body.filterSection === 'string' ? body.filterSection.trim() : '';
 
-    const pendingList = assignment.studentAssignments.filter(item => {
+    const rawPendingList = assignment.studentAssignments.filter(item => {
       const student = item.student as any;
       if (filterBranch && filterBranch.toLowerCase() !== 'all') {
         if (!student.branch || student.branch.trim().toLowerCase() !== filterBranch.toLowerCase()) {
@@ -98,6 +99,34 @@ export async function POST(
       }
       return true;
     });
+
+    // Reconcile against submissions so students who solved it aren't emailed
+    const studentIds = Array.from(new Set(rawPendingList.map(item => item.student.id)));
+    const submissions = studentIds.length > 0 ? await prisma.submission.findMany({
+      where: { studentId: { in: studentIds } },
+      select: { studentId: true, title: true, titleSlug: true, timestamp: true }
+    }) : [];
+
+    const subsByStudent = new Map<string, typeof submissions>();
+    for (const sub of submissions) {
+      const list = subsByStudent.get(sub.studentId) || [];
+      list.push(sub);
+      subsByStudent.set(sub.studentId, list);
+    }
+
+    const pendingList: typeof rawPendingList = [];
+    for (const item of rawPendingList) {
+      const studentSubs = subsByStudent.get(item.student.id) || [];
+      const match = studentSubs.find(s => isAssignmentMatch(assignment, s));
+      if (match) {
+        prisma.studentAssignment.update({
+          where: { id: item.id },
+          data: { status: 'completed', completedAt: match.timestamp }
+        }).catch(err => console.error('Error updating assignment in notify:', err));
+      } else {
+        pendingList.push(item);
+      }
+    }
 
     if (pendingList.length === 0) {
       return NextResponse.json({

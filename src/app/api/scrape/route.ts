@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { scrapeProfile } from '@/lib/scraping/scrapeProfile';
+import { isAssignmentMatch } from '@/lib/scraping/titleNormalizer';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,7 +95,7 @@ export async function POST(req: Request) {
           // Evaluate assignments
           if (pendingAssignments.length > 0) {
             for (const pa of pendingAssignments) {
-              const match = recentSubmissions.find((sub: any) => sub.titleSlug === pa.assignment.titleSlug);
+              const match = recentSubmissions.find((sub: any) => isAssignmentMatch(pa.assignment, sub));
               if (match) {
                 await prisma.studentAssignment.update({
                   where: { id: pa.id },

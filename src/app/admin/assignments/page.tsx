@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, BookOpen, Trash2, Users, Download, Edit2, X, Mail, Send, CheckCircle2, AlertTriangle, AlertCircle, Search, CheckSquare, Square, Filter } from "lucide-react";
+import { ArrowLeft, Plus, BookOpen, Trash2, Users, Download, Edit2, X, Mail, Send, CheckCircle2, AlertTriangle, AlertCircle, Search, CheckSquare, Square, Filter, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -131,6 +131,29 @@ export default function AssignmentsPage() {
       setFetchError(e.message || "Failed to load assignments");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [reconcileMessage, setReconcileMessage] = useState("");
+
+  const handleReconcile = async () => {
+    try {
+      setIsReconciling(true);
+      setReconcileMessage("");
+      const res = await fetch("/api/admin/assignments/reconcile", { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        setReconcileMessage(data.message || `Reconciliation complete. Updated ${data.reconciled || 0} assignments.`);
+        await fetchAssignments();
+        setTimeout(() => setReconcileMessage(""), 6000);
+      } else {
+        alert(data.error || "Failed to reconcile assignments");
+      }
+    } catch (e: any) {
+      alert(e.message || "Error reconciling assignments");
+    } finally {
+      setIsReconciling(false);
     }
   };
 
@@ -573,6 +596,16 @@ export default function AssignmentsPage() {
                       <Mail size={14} /> Send Reminder ({selectedAssignmentIds.length})
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={handleReconcile}
+                    disabled={isReconciling}
+                    className="btn btn-outline"
+                    title="Scan stored submissions and automatically mark completed questions"
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '0.85rem', cursor: isReconciling ? 'not-allowed' : 'pointer' }}
+                  >
+                    <RefreshCw size={14} className={isReconciling ? "animate-spin" : ""} /> {isReconciling ? "Syncing..." : "Sync Statuses"}
+                  </button>
                   <a 
                     href="/api/admin/assignments/export-all"
                     download
@@ -583,6 +616,17 @@ export default function AssignmentsPage() {
                   </a>
                 </div>
               </div>
+
+              {reconcileMessage && (
+                <div style={{
+                  padding: '10px 16px', margin: '0 16px 14px 16px',
+                  borderRadius: '8px', background: '#ecfdf5', border: '1px solid #a7f3d0',
+                  color: '#065f46', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px'
+                }}>
+                  <CheckCircle2 size={16} color="#059669" />
+                  <span>{reconcileMessage}</span>
+                </div>
+              )}
 
               {/* Selection Action Banner */}
               {selectedAssignmentIds.length > 0 && (
@@ -598,7 +642,11 @@ export default function AssignmentsPage() {
                       {selectedAssignmentIds.length} Selected
                     </span>
                     <span style={{ fontSize: '0.85rem' }}>
-                      Selected for single-send email reminder (bundled via BCC into <strong>1 single email</strong>).
+                      {selectedAssignmentIds.length > 10 ? (
+                        <>Selected for email reminders &bull; Automatically sent in batches of <strong>10 questions per email</strong>.</>
+                      ) : (
+                        <>Selected for single-send email reminder (bundled via BCC into <strong>1 single email</strong>).</>
+                      )}
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1053,32 +1101,61 @@ export default function AssignmentsPage() {
               </button>
             </div>
 
-            {/* Single Email / BCC Notice */}
+            {/* Delivery Info Notice */}
             <div style={{ background: 'rgba(164, 14, 25, 0.04)', border: '1px solid rgba(164, 14, 25, 0.18)', borderRadius: '8px', padding: '12px 14px', marginBottom: '18px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
               <div style={{ color: 'var(--primary)', marginTop: '2px' }}><CheckCircle2 size={18} /></div>
               <div style={{ fontSize: '0.82rem', color: '#7d0b13', lineHeight: 1.5 }}>
-                <strong>Single Email Dispatch:</strong> All student recipients are bundled into the same email dispatch via <strong>BCC</strong>. This counts as <strong>only 1 email send</strong> towards your daily quota, and ensures complete student email privacy.
+                {targetAssignmentIds.length > 10 ? (
+                  <>
+                    <strong>Automatic 10-Question Chunking:</strong> You selected <strong>{targetAssignmentIds.length} questions</strong>. They will automatically be sent in <strong>{Math.ceil(targetAssignmentIds.length / 10)} emails</strong> (maximum <strong>10 questions per email</strong>) via <strong>BCC</strong> to prevent message clipping and ensure high deliverability.
+                  </>
+                ) : (
+                  <>
+                    <strong>Single Email Dispatch:</strong> All student recipients are bundled into the same email dispatch via <strong>BCC</strong>. This counts as <strong>only 1 email send</strong> towards your daily quota, and ensures complete student email privacy.
+                  </>
+                )}
               </div>
             </div>
 
             {/* Selected Questions List */}
-            <div style={{ background: '#f8fafc', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', maxHeight: '140px', overflowY: 'auto' }}>
-              <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 700, letterSpacing: '0.5px', marginBottom: '8px' }}>
-                Selected Questions ({targetAssignmentIds.length})
+            <div style={{ background: '#f8fafc', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', maxHeight: '160px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 700, letterSpacing: '0.5px' }}>
+                  Selected Questions ({targetAssignmentIds.length})
+                </div>
+                {targetAssignmentIds.length > 10 && (
+                  <span style={{ fontSize: '0.72rem', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                    {Math.ceil(targetAssignmentIds.length / 10)} Emails (10 Qs / Email)
+                  </span>
+                )}
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {targetAssignmentIds.map((id, index) => {
                   const a = assignments.find(x => x.id === id);
                   const title = a?.title || a?.titleSlug || id;
+                  const isBatchStart = index > 0 && index % 10 === 0;
+                  const batchNum = Math.floor(index / 10) + 1;
                   return (
-                    <div key={id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                      <span><strong>#{index + 1}</strong> {title}</span>
-                      {a?.titleSlug && (
-                        <a href={`https://leetcode.com/problems/${a.titleSlug}/`} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem', color: 'var(--primary)', textDecoration: 'none' }}>
-                          View &rarr;
-                        </a>
+                    <React.Fragment key={id}>
+                      {isBatchStart && (
+                        <div style={{ margin: '8px 0 2px', borderTop: '1px dashed #cbd5e1', paddingTop: '6px', fontSize: '0.74rem', fontWeight: 700, color: 'var(--primary)' }}>
+                          📬 Email #{batchNum} (Questions {index + 1}–{Math.min(index + 10, targetAssignmentIds.length)})
+                        </div>
                       )}
-                    </div>
+                      {index === 0 && targetAssignmentIds.length > 10 && (
+                        <div style={{ margin: '0 0 2px', fontSize: '0.74rem', fontWeight: 700, color: 'var(--primary)' }}>
+                          📬 Email #1 (Questions 1–{Math.min(10, targetAssignmentIds.length)})
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                        <span><strong>#{index + 1}</strong> {title}</span>
+                        {a?.titleSlug && (
+                          <a href={`https://leetcode.com/problems/${a.titleSlug}/`} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem', color: 'var(--primary)', textDecoration: 'none' }}>
+                            View &rarr;
+                          </a>
+                        )}
+                      </div>
+                    </React.Fragment>
                   );
                 })}
               </div>
@@ -1108,7 +1185,9 @@ export default function AssignmentsPage() {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '12px', textAlign: 'center' }}>
                     <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid rgba(164, 14, 25, 0.2)' }}>
                       <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--primary)' }}>{notificationResult.emailsSent}</div>
-                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Email Sent (Counts as 1)</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                        {notificationResult.questionBatchesCount > 1 ? `${notificationResult.questionBatchesCount} Emails (${notificationResult.assignmentsCount} Qs)` : 'Email Sent (Counts as 1)'}
+                      </div>
                     </div>
                     <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
                       <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#059669' }}>{notificationResult.totalRecipients}</div>
@@ -1254,7 +1333,15 @@ export default function AssignmentsPage() {
                       </div>
                     </div>
                     <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#475569', textAlign: 'center' }}>
-                      Will be sent in <strong>{bulkPreviewData.estimatedBatches} email message{bulkPreviewData.estimatedBatches > 1 ? 's' : ''}</strong> (counts as only <strong>{bulkPreviewData.estimatedBatches} email send</strong> towards your daily Gmail quota).
+                      {targetAssignmentIds.length > 10 ? (
+                        <span>
+                          Will be sent across <strong>{bulkPreviewData.questionBatchesCount || Math.ceil(targetAssignmentIds.length / 10)} emails</strong> (maximum <strong>10 questions per email</strong>) via BCC.
+                        </span>
+                      ) : (
+                        <span>
+                          Will be sent in <strong>{bulkPreviewData.estimatedBatches} email message{bulkPreviewData.estimatedBatches > 1 ? 's' : ''}</strong> (counts as only <strong>{bulkPreviewData.estimatedBatches} email send</strong> towards your daily Gmail quota).
+                        </span>
+                      )}
                     </div>
                   </div>
                 ) : null}
@@ -1367,7 +1454,11 @@ export default function AssignmentsPage() {
                     {isSendingNotifications ? (
                       <>
                         <div className="animate-spin" style={{ width: 14, height: 14, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
-                        <span>Sending Single Email via {recipientMode.toUpperCase()}...</span>
+                        <span>
+                          {targetAssignmentIds.length > 10
+                            ? `Dispatching ${Math.ceil(targetAssignmentIds.length / 10)} Emails (10 Qs/Email)...`
+                            : `Sending Email via ${recipientMode.toUpperCase()}...`}
+                        </span>
                       </>
                     ) : (
                       <>
@@ -1375,7 +1466,8 @@ export default function AssignmentsPage() {
                         <span>
                           Send Reminders ({bulkPreviewData?.totalRecipientsWithEmail || 0} Students
                           {notifyTargetBranch ? ` in ${notifyTargetBranch}` : ''}
-                          {notifyTargetSection ? ` - Sec ${notifyTargetSection}` : ''} &bull; 1 Email)
+                          {notifyTargetSection ? ` - Sec ${notifyTargetSection}` : ''} &bull;{' '}
+                          {targetAssignmentIds.length > 10 ? `${Math.ceil(targetAssignmentIds.length / 10)} Emails (10 Qs/Email)` : '1 Email'})
                         </span>
                       </>
                     )}

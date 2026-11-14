@@ -152,10 +152,23 @@ export interface SendMultiAssignmentOptions {
   assignments: Array<{ title?: string | null; titleSlug: string }>;
   recipientName?: string;
   isTest?: boolean;
+  batchIndex?: number;
+  totalBatches?: number;
+  startQuestionIndex?: number;
 }
 
 export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOptions) {
-  const { to, cc, bcc, assignments, recipientName = 'Students', isTest = false } = options;
+  const { 
+    to, 
+    cc, 
+    bcc, 
+    assignments, 
+    recipientName = 'Students', 
+    isTest = false,
+    batchIndex,
+    totalBatches,
+    startQuestionIndex,
+  } = options;
   const senderEmail = process.env.EMAIL_USER || 'leetcodetrackernotify@gmail.com';
   const transporter = getEmailTransporter();
 
@@ -163,21 +176,26 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
     throw new Error('At least one assignment must be provided for the reminder email.');
   }
 
+  const batchPrefix = (totalBatches && totalBatches > 1 && batchIndex !== undefined)
+    ? `[Part ${batchIndex + 1}/${totalBatches}] `
+    : '';
+
   const primaryTitle = assignments[0].title || assignments[0].titleSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   const subject = assignments.length === 1
-    ? `${isTest ? '[TEST PREVIEW] ' : ''}LeetCode Assignment: ${primaryTitle}`
-    : `${isTest ? '[TEST PREVIEW] ' : ''}LeetCode Assignments: ${primaryTitle} (+${assignments.length - 1} more)`;
+    ? `${isTest ? '[TEST PREVIEW] ' : ''}${batchPrefix}LeetCode Assignment: ${primaryTitle}`
+    : `${isTest ? '[TEST PREVIEW] ' : ''}${batchPrefix}LeetCode Assignments: ${primaryTitle} (+${assignments.length - 1} more)`;
 
   const problemsHtml = assignments.map((a, index) => {
     const title = a.title || a.titleSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const problemUrl = `https://leetcode.com/problems/${a.titleSlug}/`;
+    const problemNumber = (startQuestionIndex !== undefined ? startQuestionIndex : 0) + index + 1;
     return `
       <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #a40e19; border-radius: 8px; padding: 16px 20px; margin-bottom: 14px;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr>
             <td style="vertical-align: top;">
               <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 4px;">
-                Problem #${index + 1}
+                Problem #${problemNumber}
               </div>
               <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
                 ${title}
@@ -201,7 +219,8 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
 
   const plainTextList = assignments.map((a, i) => {
     const title = a.title || a.titleSlug;
-    return `${i + 1}. ${title} (https://leetcode.com/problems/${a.titleSlug}/)`;
+    const problemNumber = (startQuestionIndex !== undefined ? startQuestionIndex : 0) + i + 1;
+    return `${problemNumber}. ${title} (https://leetcode.com/problems/${a.titleSlug}/)`;
   }).join('\n');
 
   const htmlContent = `
@@ -229,7 +248,7 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
                   </td>
                   <td align="right">
                     <span style="display: inline-block; background-color: rgba(255, 255, 255, 0.2); color: #ffffff; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px;">
-                      ${assignments.length} ${assignments.length === 1 ? 'Problem' : 'Problems'}
+                      ${assignments.length} ${assignments.length === 1 ? 'Problem' : 'Problems'}${totalBatches && totalBatches > 1 ? ` &bull; Part ${(batchIndex || 0) + 1} of ${totalBatches}` : ''}
                     </span>
                   </td>
                 </tr>
@@ -253,7 +272,7 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
               </p>
               
               <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
-                This is a friendly reminder from your mentor that you have <strong>${assignments.length} pending LeetCode assignment${assignments.length > 1 ? 's' : ''}</strong> waiting for your submission. Please solve and submit the following problem${assignments.length > 1 ? 's' : ''}:
+                This is a friendly reminder from your mentor that you have <strong>${assignments.length} pending LeetCode assignment${assignments.length > 1 ? 's' : ''}${totalBatches && totalBatches > 1 ? ` (Part ${(batchIndex || 0) + 1} of ${totalBatches})` : ''}</strong> waiting for your submission. Please solve and submit the following problem${assignments.length > 1 ? 's' : ''}:
               </p>
 
               <!-- Problems List -->

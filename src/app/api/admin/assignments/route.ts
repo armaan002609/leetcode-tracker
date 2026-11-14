@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
+import { getQuestionVariants, isAssignmentMatch } from '@/lib/scraping/titleNormalizer';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,18 +55,25 @@ export async function POST(req: Request) {
     // Create StudentAssignments
     if (students.length > 0) {
       // Pre-check if any of these students have ALREADY completed the question
+      const variants = getQuestionVariants(titleSlug, title || titleSlug);
+      const studentIds = students.map(s => s.id);
+      
       const existingSubmissions = await prisma.submission.findMany({
         where: {
-          titleSlug,
-          studentId: { in: students.map(s => s.id) }
+          studentId: { in: studentIds },
+          OR: [
+            { titleSlug: { in: variants.slugs } },
+            { title: { in: variants.titles, mode: 'insensitive' } }
+          ]
         }
       });
       
       const submissionMap = new Map();
       existingSubmissions.forEach(sub => {
-        // If a student submitted multiple times, we just take the first one found or oldest
-        if (!submissionMap.has(sub.studentId)) {
-          submissionMap.set(sub.studentId, sub.timestamp);
+        if (isAssignmentMatch(assignment, sub)) {
+          if (!submissionMap.has(sub.studentId)) {
+            submissionMap.set(sub.studentId, sub.timestamp);
+          }
         }
       });
 

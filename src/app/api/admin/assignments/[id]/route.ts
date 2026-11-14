@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { getQuestionVariants, isAssignmentMatch } from '@/lib/scraping/titleNormalizer';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -110,17 +111,23 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     });
 
     if (students.length > 0) {
+      const variants = getQuestionVariants(assignment.titleSlug, assignment.title);
       const existingSubmissions = await prisma.submission.findMany({
         where: {
-          titleSlug: assignment.titleSlug,
-          studentId: { in: studentIds }
+          studentId: { in: studentIds },
+          OR: [
+            { titleSlug: { in: variants.slugs } },
+            { title: { in: variants.titles, mode: 'insensitive' } }
+          ]
         }
       });
       
       const submissionMap = new Map();
       existingSubmissions.forEach(sub => {
-        if (!submissionMap.has(sub.studentId)) {
-          submissionMap.set(sub.studentId, sub.timestamp);
+        if (isAssignmentMatch(assignment, sub)) {
+          if (!submissionMap.has(sub.studentId)) {
+            submissionMap.set(sub.studentId, sub.timestamp);
+          }
         }
       });
 
