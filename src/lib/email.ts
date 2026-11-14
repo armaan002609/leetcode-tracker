@@ -92,7 +92,7 @@ export async function sendAssignmentReminder(options: SendReminderOptions) {
               </div>
 
               <!-- Action Call to Action Button -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 28px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
                 <tr>
                   <td align="center">
                     <a href="${problemUrl}" target="_blank" style="display: inline-block; background-color: #a40e19; color: #ffffff; font-weight: 600; font-size: 15px; text-decoration: none; padding: 14px 28px; border-radius: 8px; box-shadow: 0 2px 4px rgba(164, 14, 25, 0.25);">
@@ -102,9 +102,15 @@ export async function sendAssignmentReminder(options: SendReminderOptions) {
                 </tr>
               </table>
 
-              <p style="margin: 0 0 8px 0; font-size: 13px; line-height: 1.5; color: #64748b;">
-                <strong>Important:</strong> Once you submit an Accepted (AC) solution on LeetCode with your linked account, the tracker will automatically record your completion on the next synchronization.
-              </p>
+              <!-- Note Box -->
+              <div style="background-color: #fdf2f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 14px 16px; margin-bottom: 8px;">
+                <p style="margin: 0 0 6px 0; font-size: 13px; line-height: 1.5; color: #991b1b;">
+                  <strong>Note:</strong> If you have already done this question previously, kindly <strong>resubmit</strong> the solution on the LeetCode portal. The tracker will automatically detect your submission and mark your assignment as completed on the next synchronization.
+                </p>
+                <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #7f1d1d;">
+                  Please ensure you submit using your registered LeetCode account so your progress is tracked accurately.
+                </p>
+              </div>
             </td>
           </tr>
 
@@ -129,7 +135,7 @@ export async function sendAssignmentReminder(options: SendReminderOptions) {
     to,
     replyTo: senderEmail,
     subject: `LeetCode Assignment: ${displayTitle}`,
-    text: `Hello ${studentName},\n\nYou have an assigned LeetCode problem: ${displayTitle}.\n\nPlease solve and submit your solution here:\n${problemUrl}\n\nOnce submitted and accepted, your progress will be updated automatically on the tracker.\n\nBest regards,\nLeetCode Tracker`,
+    text: `Hello ${studentName},\n\nYou have an assigned LeetCode problem: ${displayTitle}.\n\nPlease solve and submit your solution here:\n${problemUrl}\n\nNote: If you have already done this question previously, kindly resubmit the question on the LeetCode portal. The tracker will automatically detect your submission and mark your assignment as completed on the next synchronization.\n\nBest regards,\nLeetCode Tracker`,
     html: htmlContent,
     headers: {
       'X-Priority': '3',
@@ -254,8 +260,11 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
               ${problemsHtml}
 
               <div style="background-color: #fdf2f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 14px 16px; margin-top: 20px;">
-                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #991b1b;">
-                  <strong>Note:</strong> Once you submit an Accepted (AC) solution on LeetCode with your registered LeetCode account, the tracker will automatically record your completion on the next synchronization.
+                <p style="margin: 0 0 6px 0; font-size: 13px; line-height: 1.5; color: #991b1b;">
+                  <strong>Note:</strong> If you have already done any of these questions previously, kindly <strong>resubmit</strong> your solution on the LeetCode portal. The tracker will automatically detect your submission and mark your assignment as completed on the next synchronization.
+                </p>
+                <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #7f1d1d;">
+                  Please ensure you submit using your registered LeetCode account so your progress is tracked accurately.
                 </p>
               </div>
             </td>
@@ -289,7 +298,7 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
     bcc: bcc && bcc.length > 0 ? bcc : undefined,
     replyTo: senderEmail,
     subject,
-    text: `Hello ${recipientName},\n\nYou have ${assignments.length} pending LeetCode assignment(s) waiting for submission:\n\n${plainTextList}\n\nPlease submit your solution on LeetCode. Once accepted, your progress will be updated automatically.\n\nBest regards,\nLeetCode Tracker`,
+    text: `Hello ${recipientName},\n\nYou have ${assignments.length} pending LeetCode assignment(s) waiting for submission:\n\n${plainTextList}\n\nNote: If you have already done any of these questions previously, kindly resubmit the question on the LeetCode portal. The tracker will automatically detect your submission and record your completion on the next synchronization.\n\nBest regards,\nLeetCode Tracker`,
     html: htmlContent,
     headers: {
       'X-Priority': '3',
