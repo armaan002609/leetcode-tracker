@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, BookOpen, Trash2, Users, Download, Edit2, X, Mail, Send, CheckCircle2, AlertTriangle, AlertCircle, Search, CheckSquare, Square } from "lucide-react";
+import { ArrowLeft, Plus, BookOpen, Trash2, Users, Download, Edit2, X, Mail, Send, CheckCircle2, AlertTriangle, AlertCircle, Search, CheckSquare, Square, Filter } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -35,11 +35,15 @@ export default function AssignmentsPage() {
   const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [completionFilter, setCompletionFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [assignmentBranchFilter, setAssignmentBranchFilter] = useState("all");
   const [expandedStatusFilter, setExpandedStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [expandedSectionFilter, setExpandedSectionFilter] = useState("all");
   const [targetAssignmentIds, setTargetAssignmentIds] = useState<string[]>([]);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [loadingBulkPreview, setLoadingBulkPreview] = useState(false);
   const [bulkPreviewData, setBulkPreviewData] = useState<any>(null);
+  const [notifyTargetBranch, setNotifyTargetBranch] = useState("");
+  const [notifyTargetSection, setNotifyTargetSection] = useState("");
   const [recipientMode, setRecipientMode] = useState<'bcc' | 'cc'>('bcc');
   const [isSendingNotifications, setIsSendingNotifications] = useState(false);
   const [notificationResult, setNotificationResult] = useState<any>(null);
@@ -50,6 +54,7 @@ export default function AssignmentsPage() {
   const [testSuccessMessage, setTestSuccessMessage] = useState("");
 
   const [availableBranches, setAvailableBranches] = useState<string[]>([]);
+  const [availableSections, setAvailableSections] = useState<string[]>([]);
 
   const [lookupRollNumber, setLookupRollNumber] = useState("");
   const [lookupStudent, setLookupStudent] = useState<any>(null);
@@ -84,6 +89,7 @@ export default function AssignmentsPage() {
     } else if (status === "authenticated") {
       fetchAssignments();
       fetchBranches();
+      fetchSections();
     }
   }, [status, router, session]);
 
@@ -92,6 +98,18 @@ export default function AssignmentsPage() {
       const res = await fetch("/api/admin/branches");
       if (res.ok) {
         setAvailableBranches(await res.json());
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchSections = async (branch?: string) => {
+    try {
+      const url = branch && branch !== 'all' ? `/api/admin/sections?branch=${encodeURIComponent(branch)}` : '/api/admin/sections';
+      const res = await fetch(url);
+      if (res.ok) {
+        setAvailableSections(await res.json());
       }
     } catch (e) {
       console.error(e);
@@ -198,6 +216,11 @@ export default function AssignmentsPage() {
              (a.targetBranch && a.targetBranch.toLowerCase().includes(q));
       if (!matchesSearch) return false;
     }
+    if (assignmentBranchFilter !== 'all') {
+      if (!a.targetBranch || a.targetBranch.toLowerCase() !== assignmentBranchFilter.toLowerCase()) {
+        return false;
+      }
+    }
     if (completionFilter === 'pending') {
       return a.completedCount < a.totalAssigned;
     }
@@ -223,9 +246,11 @@ export default function AssignmentsPage() {
     }
   };
 
-  const handleOpenBulkModal = async (ids: string[]) => {
+  const handleOpenBulkModal = async (ids: string[], initialBranch = "", initialSection = "") => {
     if (ids.length === 0) return;
     setTargetAssignmentIds(ids);
+    setNotifyTargetBranch(initialBranch || "");
+    setNotifyTargetSection(initialSection || "");
     setBulkModalOpen(true);
     setBulkPreviewData(null);
     setNotificationResult(null);
@@ -240,6 +265,8 @@ export default function AssignmentsPage() {
         body: JSON.stringify({
           assignmentIds: ids,
           defaultDomain: defaultDomain.trim(),
+          filterBranch: initialBranch || "",
+          filterSection: initialSection || "",
           previewOnly: true,
         }),
       });
@@ -258,7 +285,11 @@ export default function AssignmentsPage() {
     }
   };
 
-  const refreshBulkPreview = async (domainToUse: string) => {
+  const refreshBulkPreview = async (
+    branchToUse = notifyTargetBranch, 
+    sectionToUse = notifyTargetSection, 
+    domainToUse = defaultDomain
+  ) => {
     if (targetAssignmentIds.length === 0) return;
     setLoadingBulkPreview(true);
     try {
@@ -268,6 +299,8 @@ export default function AssignmentsPage() {
         body: JSON.stringify({
           assignmentIds: targetAssignmentIds,
           defaultDomain: domainToUse.trim(),
+          filterBranch: branchToUse,
+          filterSection: sectionToUse,
           previewOnly: true,
         }),
       });
@@ -284,6 +317,8 @@ export default function AssignmentsPage() {
   const handleCloseNotifyModal = () => {
     setBulkModalOpen(false);
     setTargetAssignmentIds([]);
+    setNotifyTargetBranch("");
+    setNotifyTargetSection("");
     setBulkPreviewData(null);
     setNotificationResult(null);
     setNotifyError("");
@@ -306,6 +341,8 @@ export default function AssignmentsPage() {
           assignmentIds: targetAssignmentIds,
           defaultDomain: defaultDomain.trim(),
           recipientMode,
+          filterBranch: notifyTargetBranch,
+          filterSection: notifyTargetSection,
         }),
       });
       const data = await res.json();
@@ -515,6 +552,16 @@ export default function AssignmentsPage() {
                     <option value="pending">Pending ({assignments.filter(a => a.completedCount < a.totalAssigned).length})</option>
                     <option value="completed">Completed ({assignments.filter(a => a.totalAssigned > 0 && a.completedCount === a.totalAssigned).length})</option>
                   </select>
+                  <select 
+                    value={assignmentBranchFilter}
+                    onChange={e => setAssignmentBranchFilter(e.target.value)}
+                    style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.82rem', background: 'white', color: 'var(--foreground)', cursor: 'pointer' }}
+                  >
+                    <option value="all">All Branches</option>
+                    {availableBranches.map(b => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {selectedAssignmentIds.length > 0 && (
@@ -636,7 +683,7 @@ export default function AssignmentsPage() {
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
                               <span>{new Date(a.createdAt).toLocaleDateString()}</span>
                               <button 
-                                onClick={(e) => { e.stopPropagation(); handleOpenBulkModal([a.id]); }}
+                                onClick={(e) => { e.stopPropagation(); handleOpenBulkModal([a.id], a.targetBranch || "", a.targetSection || ""); }}
                                 className="icon-btn"
                                 title="Send Email Reminder to Pending Students"
                                 style={{ color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
@@ -685,11 +732,14 @@ export default function AssignmentsPage() {
                                 ) : assignmentDetails ? (() => {
                                   const pendingCount = assignmentDetails.studentAssignments.filter((sa: any) => sa.status === 'pending').length;
                                   const completedCount = assignmentDetails.studentAssignments.filter((sa: any) => sa.status === 'completed').length;
+                                  const assignmentSections = Array.from(new Set(assignmentDetails.studentAssignments.map((sa: any) => sa.student.section).filter(Boolean))).sort() as string[];
                                   const visibleAssignments = assignmentDetails.studentAssignments.filter((sa: any) => {
-                                    if (expandedStatusFilter === 'pending') return sa.status === 'pending';
-                                    if (expandedStatusFilter === 'completed') return sa.status === 'completed';
+                                    if (expandedStatusFilter === 'pending' && sa.status !== 'pending') return false;
+                                    if (expandedStatusFilter === 'completed' && sa.status !== 'completed') return false;
+                                    if (expandedSectionFilter !== 'all' && (sa.student.section || '').toLowerCase() !== expandedSectionFilter.toLowerCase()) return false;
                                     return true;
                                   });
+                                  const filteredPendingCount = visibleAssignments.filter((sa: any) => sa.status === 'pending').length;
 
                                   return (
                                     <div>
@@ -736,13 +786,28 @@ export default function AssignmentsPage() {
                                               Done ({completedCount})
                                             </button>
                                           </div>
+                                          {assignmentSections.length > 0 && (
+                                            <select
+                                              value={expandedSectionFilter}
+                                              onChange={e => setExpandedSectionFilter(e.target.value)}
+                                              style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--surface-border)', background: 'white', color: 'var(--foreground)', cursor: 'pointer' }}
+                                            >
+                                              <option value="all">All Sections</option>
+                                              {assignmentSections.map(s => (
+                                                <option key={s} value={s}>Sec {s}</option>
+                                              ))}
+                                            </select>
+                                          )}
                                         </div>
                                         <button 
-                                          onClick={(e) => { e.stopPropagation(); handleOpenBulkModal([a.id]); }}
+                                          onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            handleOpenBulkModal([a.id], a.targetBranch || "", expandedSectionFilter !== 'all' ? expandedSectionFilter : (a.targetSection || "")); 
+                                          }}
                                           className="btn btn-primary"
                                           style={{ fontSize: '0.82rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
                                         >
-                                          <Mail size={14} /> Send Email Reminder ({pendingCount} Pending)
+                                          <Mail size={14} /> Send Email Reminder ({expandedSectionFilter !== 'all' ? `${filteredPendingCount} in Sec ${expandedSectionFilter}` : `${pendingCount} Pending`})
                                         </button>
                                       </div>
                                       <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
@@ -1029,9 +1094,16 @@ export default function AssignmentsPage() {
             {notificationResult ? (
               <div>
                 <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontWeight: 700, fontSize: '1rem', marginBottom: '8px' }}>
-                    <CheckCircle2 size={20} />
-                    <span>Notification Run Completed!</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontWeight: 700, fontSize: '1rem' }}>
+                      <CheckCircle2 size={20} />
+                      <span>Notification Run Completed!</span>
+                    </div>
+                    {(notificationResult.filterBranch || notificationResult.filterSection) && (
+                      <span style={{ fontSize: '0.78rem', color: '#065f46', background: '#d1fae5', padding: '3px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                        Target: {notificationResult.filterBranch || 'All Branches'} {notificationResult.filterSection ? `• Section ${notificationResult.filterSection}` : '• All Sections'}
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '12px', textAlign: 'center' }}>
                     <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid rgba(164, 14, 25, 0.2)' }}>
@@ -1081,10 +1153,89 @@ export default function AssignmentsPage() {
               </div>
             ) : (
               <form onSubmit={handleSendBulkNotifications} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Target Audience Filter (Branch and Section Wise) */}
+                <div style={{ background: '#f8fafc', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: 24, height: 24, borderRadius: '6px', background: 'rgba(164, 14, 25, 0.08)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Filter size={13} />
+                      </div>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                        Target Audience (Branch &amp; Section Wise)
+                      </span>
+                    </div>
+                    {(notifyTargetBranch || notifyTargetSection) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNotifyTargetBranch("");
+                          setNotifyTargetSection("");
+                          refreshBulkPreview("", "", defaultDomain);
+                        }}
+                        style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                      >
+                        Reset to All
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
+                        Branch
+                      </label>
+                      <select
+                        value={notifyTargetBranch}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNotifyTargetBranch(val);
+                          refreshBulkPreview(val, notifyTargetSection, defaultDomain);
+                        }}
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.84rem', background: 'white', color: '#0f172a', cursor: 'pointer' }}
+                      >
+                        <option value="">All Branches</option>
+                        {availableBranches.map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
+                        Section
+                      </label>
+                      <select
+                        value={notifyTargetSection}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNotifyTargetSection(val);
+                          refreshBulkPreview(notifyTargetBranch, val, defaultDomain);
+                        }}
+                        style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.84rem', background: 'white', color: '#0f172a', cursor: 'pointer' }}
+                      >
+                        <option value="">All Sections</option>
+                        {availableSections.map(s => (
+                          <option key={s} value={s}>Section {s}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '8px', fontSize: '0.76rem', color: '#64748b' }}>
+                    {notifyTargetBranch || notifyTargetSection ? (
+                      <span>
+                        Sending only to pending students in <strong style={{ color: 'var(--primary)' }}>{notifyTargetBranch || 'All Branches'}</strong> {notifyTargetSection ? `(Section ${notifyTargetSection})` : '(All Sections)'}
+                      </span>
+                    ) : (
+                      <span>Sending to all pending students across all branches and sections.</span>
+                    )}
+                  </div>
+                </div>
+
                 {/* Live Preview Stats */}
                 {loadingBulkPreview ? (
                   <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.85rem' }}>
-                    Calculating unique pending students across selected questions...
+                    Calculating unique pending students for {notifyTargetBranch || 'all branches'} {notifyTargetSection ? `(Section ${notifyTargetSection})` : ''}...
                   </div>
                 ) : bulkPreviewData ? (
                   <div style={{ background: '#f8fafc', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '14px' }}>
@@ -1123,7 +1274,7 @@ export default function AssignmentsPage() {
                     />
                     <button
                       type="button"
-                      onClick={() => refreshBulkPreview(defaultDomain)}
+                      onClick={() => refreshBulkPreview(notifyTargetBranch, notifyTargetSection, defaultDomain)}
                       className="btn btn-outline"
                       style={{ padding: '8px 12px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
                     >
@@ -1221,7 +1372,11 @@ export default function AssignmentsPage() {
                     ) : (
                       <>
                         <Send size={15} />
-                        <span>Send Reminders ({bulkPreviewData?.totalRecipientsWithEmail || 0} Students &bull; 1 Email)</span>
+                        <span>
+                          Send Reminders ({bulkPreviewData?.totalRecipientsWithEmail || 0} Students
+                          {notifyTargetBranch ? ` in ${notifyTargetBranch}` : ''}
+                          {notifyTargetSection ? ` - Sec ${notifyTargetSection}` : ''} &bull; 1 Email)
+                        </span>
                       </>
                     )}
                   </button>

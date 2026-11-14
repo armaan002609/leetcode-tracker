@@ -36,6 +36,8 @@ export async function POST(
                 rollNumber: true,
                 name: true,
                 email: true,
+                branch: true,
+                section: true,
               }
             }
           }
@@ -79,10 +81,27 @@ export async function POST(
       });
     }
 
-    const pendingList = assignment.studentAssignments;
+    const filterBranch = typeof body.filterBranch === 'string' ? body.filterBranch.trim() : '';
+    const filterSection = typeof body.filterSection === 'string' ? body.filterSection.trim() : '';
+
+    const pendingList = assignment.studentAssignments.filter(item => {
+      const student = item.student as any;
+      if (filterBranch && filterBranch.toLowerCase() !== 'all') {
+        if (!student.branch || student.branch.trim().toLowerCase() !== filterBranch.toLowerCase()) {
+          return false;
+        }
+      }
+      if (filterSection && filterSection.toLowerCase() !== 'all') {
+        if (!student.section || student.section.trim().toLowerCase() !== filterSection.toLowerCase()) {
+          return false;
+        }
+      }
+      return true;
+    });
+
     if (pendingList.length === 0) {
       return NextResponse.json({
-        message: 'All students have completed this assignment! No pending reminders needed.',
+        message: 'No pending students found matching the selected branch/section filter.',
         totalPending: 0,
         sent: 0,
         skippedNoEmail: 0,

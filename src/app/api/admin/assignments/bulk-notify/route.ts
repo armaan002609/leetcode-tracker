@@ -20,7 +20,14 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { assignmentIds, testEmail, recipientMode = 'bcc', previewOnly = false } = body;
+    const { 
+      assignmentIds, 
+      testEmail, 
+      recipientMode = 'bcc', 
+      previewOnly = false,
+      filterBranch = '',
+      filterSection = '',
+    } = body;
     let defaultDomain = '';
     if (typeof body.defaultDomain === 'string') {
       defaultDomain = body.defaultDomain.trim().replace(/^@/, '');
@@ -67,11 +74,20 @@ export async function POST(req: Request) {
       });
     }
 
-    // 2. Query all pending student assignments for the selected problems
+    // 2. Query pending student assignments for the selected problems, filtered by branch/section if provided
+    const studentFilter: any = {};
+    if (typeof filterBranch === 'string' && filterBranch.trim() !== '' && filterBranch.toLowerCase() !== 'all') {
+      studentFilter.branch = { equals: filterBranch.trim(), mode: 'insensitive' };
+    }
+    if (typeof filterSection === 'string' && filterSection.trim() !== '' && filterSection.toLowerCase() !== 'all') {
+      studentFilter.section = { equals: filterSection.trim(), mode: 'insensitive' };
+    }
+
     const pendingStudentAssignments = await prisma.studentAssignment.findMany({
       where: {
         assignmentId: { in: assignmentIds },
         status: 'pending',
+        ...(Object.keys(studentFilter).length > 0 ? { student: studentFilter } : {}),
       },
       select: {
         assignmentId: true,
@@ -101,6 +117,18 @@ export async function POST(req: Request) {
 
     for (const psa of pendingStudentAssignments) {
       const student = psa.student;
+      // In-memory verification for exact branch and section matching
+      if (filterBranch && filterBranch.trim() !== '' && filterBranch.toLowerCase() !== 'all') {
+        if (!student.branch || student.branch.trim().toLowerCase() !== filterBranch.trim().toLowerCase()) {
+          continue;
+        }
+      }
+      if (filterSection && filterSection.trim() !== '' && filterSection.toLowerCase() !== 'all') {
+        if (!student.section || student.section.trim().toLowerCase() !== filterSection.trim().toLowerCase()) {
+          continue;
+        }
+      }
+
       const existing = uniqueStudentsMap.get(student.id);
       if (existing) {
         existing.pendingCount += 1;
@@ -152,6 +180,8 @@ export async function POST(req: Request) {
         skippedNoEmailCount: skippedNoEmail.length,
         estimatedBatches,
         skippedSample: skippedNoEmail.slice(0, 10),
+        filterBranch: filterBranch || '',
+        filterSection: filterSection || '',
       });
     }
 
@@ -181,6 +211,15 @@ export async function POST(req: Request) {
 
     const senderEmail = process.env.EMAIL_USER || 'leetcodetrackernotify@gmail.com';
 
+    let recipientGreeting = 'Students';
+    if (filterBranch && filterSection) {
+      recipientGreeting = `${filterBranch} (Section ${filterSection}) Students`;
+    } else if (filterBranch) {
+      recipientGreeting = `${filterBranch} Students`;
+    } else if (filterSection) {
+      recipientGreeting = `Section ${filterSection} Students`;
+    }
+
     for (const chunk of emailChunks) {
       try {
         await sendMultiAssignmentReminder({
@@ -191,7 +230,7 @@ export async function POST(req: Request) {
             title: a.title || a.titleSlug,
             titleSlug: a.titleSlug,
           })),
-          recipientName: 'Students',
+          recipientName: recipientGreeting,
         });
         batchesSent++;
       } catch (err: any) {
@@ -210,6 +249,8 @@ export async function POST(req: Request) {
       failedBatches,
       assignmentsCount: assignments.length,
       recipientMode,
+      filterBranch: filterBranch || '',
+      filterSection: filterSection || '',
       errors: errors.slice(0, 10),
       skippedList: skippedNoEmail.slice(0, 20),
     });
