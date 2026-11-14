@@ -49,6 +49,7 @@ export default function Dashboard() {
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
   const [assignedQuestions, setAssignedQuestions] = useState<any[]>([]);
   const [isLoadingAssignments, setIsLoadingAssignments] = useState(false);
+  const [assignmentStatusFilter, setAssignmentStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
   // Assignment states
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
@@ -363,8 +364,18 @@ export default function Dashboard() {
 
   const selectedStudent = useMemo(() => rows.find(r => r.id === selectedStudentId), [rows, selectedStudentId]);
 
+  const pendingAssignedCount = useMemo(() => assignedQuestions.filter((qa: any) => qa.status === 'pending').length, [assignedQuestions]);
+  const completedAssignedCount = useMemo(() => assignedQuestions.filter((qa: any) => qa.status === 'completed').length, [assignedQuestions]);
+
+  const filteredAssignedQuestions = useMemo(() => {
+    if (assignmentStatusFilter === 'pending') return assignedQuestions.filter((qa: any) => qa.status === 'pending');
+    if (assignmentStatusFilter === 'completed') return assignedQuestions.filter((qa: any) => qa.status === 'completed');
+    return assignedQuestions;
+  }, [assignedQuestions, assignmentStatusFilter]);
+
   useEffect(() => {
     if (selectedStudent) {
+      setAssignmentStatusFilter('all');
       setIsLoadingSubmissions(true);
       fetch(`/api/students/${selectedStudent.id}/submissions`)
         .then(r => r.json())
@@ -1383,8 +1394,71 @@ export default function Dashboard() {
                 </div>
 
                 <div className="dashboard-card" style={{ margin: '0 0 24px 0' }}>
-                  <div className="card-header">
-                    <h3 className="card-title">Assigned Questions</h3>
+                  <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <h3 className="card-title" style={{ margin: 0 }}>Assigned Questions</h3>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--muted)', background: 'var(--muted-background)', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                        {filteredAssignedQuestions.length} of {assignedQuestions.length}
+                      </span>
+                    </div>
+
+                    {/* Filter Segmented Control */}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', background: 'var(--muted-background)', padding: '3px', borderRadius: '8px', gap: '2px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setAssignmentStatusFilter('all')}
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          borderRadius: '6px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: assignmentStatusFilter === 'all' ? 'white' : 'transparent',
+                          color: assignmentStatusFilter === 'all' ? 'var(--primary)' : 'var(--muted)',
+                          boxShadow: assignmentStatusFilter === 'all' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        All ({assignedQuestions.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAssignmentStatusFilter('pending')}
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          borderRadius: '6px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: assignmentStatusFilter === 'pending' ? 'white' : 'transparent',
+                          color: assignmentStatusFilter === 'pending' ? '#d97706' : 'var(--muted)',
+                          boxShadow: assignmentStatusFilter === 'pending' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        Pending ({pendingAssignedCount})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAssignmentStatusFilter('completed')}
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          borderRadius: '6px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: assignmentStatusFilter === 'completed' ? 'white' : 'transparent',
+                          color: assignmentStatusFilter === 'completed' ? '#059669' : 'var(--muted)',
+                          boxShadow: assignmentStatusFilter === 'completed' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        Completed ({completedAssignedCount})
+                      </button>
+                    </div>
                   </div>
                   {isLoadingAssignments ? (
                     <div style={{ padding: '24px' }}>
@@ -1392,7 +1466,22 @@ export default function Dashboard() {
                       <div className="skeleton-row" style={{ width: '80%', marginBottom: '12px' }}></div>
                       <div className="skeleton-row" style={{ width: '90%' }}></div>
                     </div>
-                  ) : assignedQuestions.length > 0 ? (
+                  ) : assignedQuestions.length === 0 ? (
+                    <div className="p-8 text-center text-muted">No questions assigned to this student.</div>
+                  ) : filteredAssignedQuestions.length === 0 ? (
+                    <div className="p-8 text-center text-muted">
+                      No {assignmentStatusFilter} questions found for this student.
+                      <div style={{ marginTop: '8px' }}>
+                        <button 
+                          onClick={() => setAssignmentStatusFilter('all')} 
+                          className="btn btn-outline" 
+                          style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+                        >
+                          Show All Questions
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
                     <table className="data-table">
                       <thead>
                         <tr>
@@ -1402,7 +1491,7 @@ export default function Dashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {assignedQuestions.map((qa: any) => (
+                        {filteredAssignedQuestions.map((qa: any) => (
                           <tr key={qa.id}>
                             <td style={{padding: '12px 16px', fontWeight: 500}}>
                               <a href={`https://leetcode.com/problems/${qa.assignment.titleSlug}/`} target="_blank" rel="noreferrer" style={{color: 'var(--primary)', textDecoration: 'none'}}>
@@ -1425,8 +1514,6 @@ export default function Dashboard() {
                         ))}
                       </tbody>
                     </table>
-                  ) : (
-                    <div className="p-8 text-center text-muted">No questions assigned to this student.</div>
                   )}
                 </div>
 

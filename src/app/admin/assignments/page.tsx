@@ -34,6 +34,8 @@ export default function AssignmentsPage() {
   // Email Notification & Multi-Selection States
   const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [completionFilter, setCompletionFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [expandedStatusFilter, setExpandedStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [targetAssignmentIds, setTargetAssignmentIds] = useState<string[]>([]);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [loadingBulkPreview, setLoadingBulkPreview] = useState(false);
@@ -189,11 +191,20 @@ export default function AssignmentsPage() {
   };
 
   const filteredAssignments = assignments.filter(a => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (a.title && a.title.toLowerCase().includes(q)) ||
-           (a.titleSlug && a.titleSlug.toLowerCase().includes(q)) ||
-           (a.targetBranch && a.targetBranch.toLowerCase().includes(q));
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      const matchesSearch = (a.title && a.title.toLowerCase().includes(q)) ||
+             (a.titleSlug && a.titleSlug.toLowerCase().includes(q)) ||
+             (a.targetBranch && a.targetBranch.toLowerCase().includes(q));
+      if (!matchesSearch) return false;
+    }
+    if (completionFilter === 'pending') {
+      return a.completedCount < a.totalAssigned;
+    }
+    if (completionFilter === 'completed') {
+      return a.totalAssigned > 0 && a.completedCount === a.totalAssigned;
+    }
+    return true;
   });
 
   const toggleSelectAssignment = (id: string) => {
@@ -483,7 +494,7 @@ export default function AssignmentsPage() {
             {/* Assignments List */}
             <div className="dashboard-card" style={{ margin: 0 }}>
               <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                   <h3 className="card-title" style={{ margin: 0 }}>All Assignments ({assignments.length})</h3>
                   <div style={{ position: 'relative' }}>
                     <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
@@ -492,9 +503,18 @@ export default function AssignmentsPage() {
                       placeholder="Search questions..."
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      style={{ padding: '6px 10px 6px 30px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.82rem', width: '180px' }}
+                      style={{ padding: '6px 10px 6px 30px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.82rem', width: '160px' }}
                     />
                   </div>
+                  <select 
+                    value={completionFilter}
+                    onChange={e => setCompletionFilter(e.target.value as any)}
+                    style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.82rem', background: 'white', color: 'var(--foreground)', cursor: 'pointer' }}
+                  >
+                    <option value="all">All Statuses ({assignments.length})</option>
+                    <option value="pending">Pending ({assignments.filter(a => a.completedCount < a.totalAssigned).length})</option>
+                    <option value="completed">Completed ({assignments.filter(a => a.totalAssigned > 0 && a.completedCount === a.totalAssigned).length})</option>
+                  </select>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {selectedAssignmentIds.length > 0 && (
@@ -662,65 +682,121 @@ export default function AssignmentsPage() {
                                     <div className="skeleton-row" style={{ width: '80%', marginBottom: '12px' }}></div>
                                     <div className="skeleton-row" style={{ width: '90%' }}></div>
                                   </div>
-                                ) : assignmentDetails ? (
-                                  <div>
-                                    <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                                      <div style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>
-                                        <strong style={{ color: '#0f172a' }}>{assignmentDetails.studentAssignments.filter((sa: any) => sa.status === 'pending').length}</strong> pending / <strong>{assignmentDetails.studentAssignments.length}</strong> total assigned
+                                ) : assignmentDetails ? (() => {
+                                  const pendingCount = assignmentDetails.studentAssignments.filter((sa: any) => sa.status === 'pending').length;
+                                  const completedCount = assignmentDetails.studentAssignments.filter((sa: any) => sa.status === 'completed').length;
+                                  const visibleAssignments = assignmentDetails.studentAssignments.filter((sa: any) => {
+                                    if (expandedStatusFilter === 'pending') return sa.status === 'pending';
+                                    if (expandedStatusFilter === 'completed') return sa.status === 'completed';
+                                    return true;
+                                  });
+
+                                  return (
+                                    <div>
+                                      <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                                          <div style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>
+                                            <strong style={{ color: '#0f172a' }}>{pendingCount}</strong> pending / <strong>{assignmentDetails.studentAssignments.length}</strong> total assigned
+                                          </div>
+                                          <div style={{ display: 'inline-flex', alignItems: 'center', background: '#e2e8f0', padding: '2px', borderRadius: '6px', gap: '2px' }}>
+                                            <button
+                                              type="button"
+                                              onClick={() => setExpandedStatusFilter('all')}
+                                              style={{
+                                                padding: '3px 8px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: 'pointer',
+                                                background: expandedStatusFilter === 'all' ? 'white' : 'transparent',
+                                                color: expandedStatusFilter === 'all' ? 'var(--primary)' : 'var(--muted)',
+                                                boxShadow: expandedStatusFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                                              }}
+                                            >
+                                              All ({assignmentDetails.studentAssignments.length})
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setExpandedStatusFilter('pending')}
+                                              style={{
+                                                padding: '3px 8px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: 'pointer',
+                                                background: expandedStatusFilter === 'pending' ? 'white' : 'transparent',
+                                                color: expandedStatusFilter === 'pending' ? '#d97706' : 'var(--muted)',
+                                                boxShadow: expandedStatusFilter === 'pending' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                                              }}
+                                            >
+                                              Pending ({pendingCount})
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setExpandedStatusFilter('completed')}
+                                              style={{
+                                                padding: '3px 8px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: 'pointer',
+                                                background: expandedStatusFilter === 'completed' ? 'white' : 'transparent',
+                                                color: expandedStatusFilter === 'completed' ? '#059669' : 'var(--muted)',
+                                                boxShadow: expandedStatusFilter === 'completed' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                                              }}
+                                            >
+                                              Done ({completedCount})
+                                            </button>
+                                          </div>
+                                        </div>
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); handleOpenBulkModal([a.id]); }}
+                                          className="btn btn-primary"
+                                          style={{ fontSize: '0.82rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                        >
+                                          <Mail size={14} /> Send Email Reminder ({pendingCount} Pending)
+                                        </button>
                                       </div>
-                                      <button 
-                                        onClick={(e) => { e.stopPropagation(); handleOpenBulkModal([a.id]); }}
-                                        className="btn btn-primary"
-                                        style={{ fontSize: '0.82rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                                      >
-                                        <Mail size={14} /> Send Email Reminder ({assignmentDetails.studentAssignments.filter((sa: any) => sa.status === 'pending').length} Pending)
-                                      </button>
-                                    </div>
-                                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                      <table className="data-table" style={{ margin: 0 }}>
-                                        <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--background)' }}>
-                                          <tr>
-                                            <th style={{padding: '8px 16px'}}>Roll Number</th>
-                                            <th style={{padding: '8px 16px'}}>Name</th>
-                                            <th style={{padding: '8px 16px'}}>Email</th>
-                                            <th style={{padding: '8px 16px'}}>Section</th>
-                                            <th style={{padding: '8px 16px'}}>Status</th>
-                                            <th style={{padding: '8px 16px'}}>Completed At</th>
-                                          </tr>
-                                        </thead>
-                                        <tbody>
-                                          {assignmentDetails.studentAssignments.map((sa: any) => (
-                                            <tr key={sa.student.id}>
-                                              <td style={{padding: '8px 16px'}}>{sa.student.rollNumber}</td>
-                                              <td style={{padding: '8px 16px'}}>{sa.student.name}</td>
-                                              <td style={{padding: '8px 16px', color: 'var(--muted)', fontSize: '0.85rem'}}>
-                                                {sa.student.email ? (
-                                                  <span style={{ color: 'var(--primary)' }}>{sa.student.email}</span>
-                                                ) : (
-                                                  <span style={{ opacity: 0.5 }}>-</span>
-                                                )}
-                                              </td>
-                                              <td style={{padding: '8px 16px'}}>{sa.student.branch || ''} {sa.student.section || ''}</td>
-                                              <td style={{padding: '8px 16px'}}>
-                                                <span className={`status-badge ${sa.status === 'completed' ? 'success' : 'pending'}`}>
-                                                  {sa.status === 'completed' ? 'Done' : 'Pending'}
-                                                </span>
-                                              </td>
-                                              <td style={{padding: '8px 16px', color: 'var(--muted)', fontSize: '0.85rem'}}>
-                                                {sa.completedAt ? new Intl.DateTimeFormat('en-IN', {
-                                                  timeZone: 'Asia/Kolkata',
-                                                  day: '2-digit', month: '2-digit', year: 'numeric',
-                                                  hour: '2-digit', minute: '2-digit', second: '2-digit',
-                                                  hour12: true
-                                                }).format(new Date(sa.completedAt)) : '-'}
-                                              </td>
+                                      <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                        <table className="data-table" style={{ margin: 0 }}>
+                                          <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--background)' }}>
+                                            <tr>
+                                              <th style={{padding: '8px 16px'}}>Roll Number</th>
+                                              <th style={{padding: '8px 16px'}}>Name</th>
+                                              <th style={{padding: '8px 16px'}}>Email</th>
+                                              <th style={{padding: '8px 16px'}}>Section</th>
+                                              <th style={{padding: '8px 16px'}}>Status</th>
+                                              <th style={{padding: '8px 16px'}}>Completed At</th>
                                             </tr>
-                                          ))}
-                                        </tbody>
-                                      </table>
+                                          </thead>
+                                          <tbody>
+                                            {visibleAssignments.length === 0 ? (
+                                              <tr>
+                                                <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)', fontSize: '0.88rem' }}>
+                                                  No {expandedStatusFilter} students found for this assignment.
+                                                </td>
+                                              </tr>
+                                            ) : visibleAssignments.map((sa: any) => (
+                                              <tr key={sa.student.id}>
+                                                <td style={{padding: '8px 16px'}}>{sa.student.rollNumber}</td>
+                                                <td style={{padding: '8px 16px'}}>{sa.student.name}</td>
+                                                <td style={{padding: '8px 16px', color: 'var(--muted)', fontSize: '0.85rem'}}>
+                                                  {sa.student.email ? (
+                                                    <span style={{ color: 'var(--primary)' }}>{sa.student.email}</span>
+                                                  ) : (
+                                                    <span style={{ opacity: 0.5 }}>-</span>
+                                                  )}
+                                                </td>
+                                                <td style={{padding: '8px 16px'}}>{sa.student.branch || ''} {sa.student.section || ''}</td>
+                                                <td style={{padding: '8px 16px'}}>
+                                                  <span className={`status-badge ${sa.status === 'completed' ? 'success' : 'pending'}`}>
+                                                    {sa.status === 'completed' ? 'Done' : 'Pending'}
+                                                  </span>
+                                                </td>
+                                                <td style={{padding: '8px 16px', color: 'var(--muted)', fontSize: '0.85rem'}}>
+                                                  {sa.completedAt ? new Intl.DateTimeFormat('en-IN', {
+                                                    timeZone: 'Asia/Kolkata',
+                                                    day: '2-digit', month: '2-digit', year: 'numeric',
+                                                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                                                    hour12: true
+                                                  }).format(new Date(sa.completedAt)) : '-'}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
                                     </div>
-                                  </div>
-                                ) : (
+                                  );
+                                })() : (
                                   <div style={{ padding: '24px', textAlign: 'center', color: 'var(--destructive)' }}>Failed to load details.</div>
                                 )}
                               </div>
