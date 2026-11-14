@@ -1107,11 +1107,11 @@ export default function AssignmentsPage() {
               <div style={{ fontSize: '0.82rem', color: '#7d0b13', lineHeight: 1.5 }}>
                 {targetAssignmentIds.length > 10 ? (
                   <>
-                    <strong>Automatic 10-Question Chunking:</strong> You selected <strong>{targetAssignmentIds.length} questions</strong>. They will automatically be sent in <strong>{Math.ceil(targetAssignmentIds.length / 10)} emails</strong> (maximum <strong>10 questions per email</strong>) via <strong>BCC</strong> to prevent message clipping and ensure high deliverability.
+                    <strong>Automatic 10-Question Chunking:</strong> You selected <strong>{targetAssignmentIds.length} questions</strong>. They will automatically be sent in <strong>{Math.ceil(targetAssignmentIds.length / 10)} emails</strong> (maximum <strong>10 questions per email</strong>) via safe batches of <strong>20 BCC recipients</strong> to ensure high deliverability and avoid spam filters.
                   </>
                 ) : (
                   <>
-                    <strong>Single Email Dispatch:</strong> All student recipients are bundled into the same email dispatch via <strong>BCC</strong>. This counts as <strong>only 1 email send</strong> towards your daily quota, and ensures complete student email privacy.
+                    <strong>Safe Group Dispatch:</strong> Student recipients are dispatched via safe batches of <strong>20 BCC recipients</strong> to protect student privacy and avoid Gmail spam flags.
                   </>
                 )}
               </div>
@@ -1335,14 +1335,34 @@ export default function AssignmentsPage() {
                     <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#475569', textAlign: 'center' }}>
                       {targetAssignmentIds.length > 10 ? (
                         <span>
-                          Will be sent across <strong>{bulkPreviewData.questionBatchesCount || Math.ceil(targetAssignmentIds.length / 10)} emails</strong> (maximum <strong>10 questions per email</strong>) via BCC.
+                          Will be sent across <strong>{bulkPreviewData.questionBatchesCount || Math.ceil(targetAssignmentIds.length / 10)} emails</strong> (maximum <strong>10 questions per email</strong>) in safe batches of 20 BCC recipients.
                         </span>
                       ) : (
                         <span>
-                          Will be sent in <strong>{bulkPreviewData.estimatedBatches} email message{bulkPreviewData.estimatedBatches > 1 ? 's' : ''}</strong> (counts as only <strong>{bulkPreviewData.estimatedBatches} email send</strong> towards your daily Gmail quota).
+                          Will be sent in <strong>{bulkPreviewData.estimatedBatches} message{bulkPreviewData.estimatedBatches > 1 ? 's' : ''}</strong> (in safe batches of 20 BCC recipients).
                         </span>
                       )}
                     </div>
+
+                    {/* Gmail Quota & Deliverability Safety Box */}
+                    {bulkPreviewData.totalRecipientDeliveries > 450 ? (
+                      <div style={{ marginTop: '12px', background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '6px', padding: '10px 12px', color: '#991b1b', fontSize: '0.8rem', lineHeight: 1.5, textAlign: 'left' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, marginBottom: '4px' }}>
+                          <AlertTriangle size={15} color="#e11d48" />
+                          <span>Exceeds Gmail Limit ({bulkPreviewData.totalRecipientDeliveries} / 500 Daily Recipients)</span>
+                        </div>
+                        <div>
+                          Google counts <strong>each recipient in BCC</strong> against your 500 daily quota ({bulkPreviewData.totalRecipientsWithEmail} students &times; {bulkPreviewData.questionBatchesCount} batches = ~<strong>{bulkPreviewData.totalRecipientDeliveries} deliveries</strong>). Exceeding this causes Google to reject emails with <em>&quot;Message blocked - appears suspicious (Error 69585)&quot;</em>.
+                        </div>
+                        <div style={{ marginTop: '6px', fontWeight: 600, color: '#7f1d1d' }}>
+                          💡 Recommended: Use the <strong>Branch &amp; Section</strong> filter above (e.g. Section A: ~50 students) or select fewer questions (1–10 questions) to keep total deliveries under 400.
+                        </div>
+                      </div>
+                    ) : bulkPreviewData.totalRecipientDeliveries > 0 ? (
+                      <div style={{ marginTop: '8px', fontSize: '0.78rem', color: '#16a34a', textAlign: 'center', fontWeight: 600 }}>
+                        ✅ Quota Check: ~{bulkPreviewData.totalRecipientDeliveries} recipient deliveries (safe within Gmail&apos;s 500 daily limit).
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
 

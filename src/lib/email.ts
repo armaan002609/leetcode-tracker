@@ -135,13 +135,8 @@ export async function sendAssignmentReminder(options: SendReminderOptions) {
     to,
     replyTo: senderEmail,
     subject: `LeetCode Assignment: ${displayTitle}`,
-    text: `Hello ${studentName},\n\nYou have an assigned LeetCode problem: ${displayTitle}.\n\nPlease solve and submit your solution here:\n${problemUrl}\n\nNote: If you have already done this question previously, kindly resubmit the question on the LeetCode portal. The tracker will automatically detect your submission and mark your assignment as completed on the next synchronization.\n\nBest regards,\nLeetCode Tracker`,
+    text: `Hello ${studentName},\n\nYou have an assigned LeetCode problem: ${displayTitle}.\n\nPlease solve and submit your solution here:\n${problemUrl}\n\nNote: If you previously completed this question, please submit your solution again on LeetCode. The tracker will automatically record your completion on the next synchronization.\n\nBest regards,\nLeetCode Tracker`,
     html: htmlContent,
-    headers: {
-      'X-Priority': '3',
-      'X-MSMail-Priority': 'Normal',
-      'Importance': 'Normal',
-    },
   });
 }
 
@@ -176,43 +171,33 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
     throw new Error('At least one assignment must be provided for the reminder email.');
   }
 
-  const batchPrefix = (totalBatches && totalBatches > 1 && batchIndex !== undefined)
-    ? `[Part ${batchIndex + 1}/${totalBatches}] `
+  const cleanTitle = (assignments[0].title || assignments[0].titleSlug)
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+
+  const partText = (totalBatches && totalBatches > 1 && batchIndex !== undefined)
+    ? ` (Part ${batchIndex + 1} of ${totalBatches})`
     : '';
 
-  const primaryTitle = assignments[0].title || assignments[0].titleSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   const subject = assignments.length === 1
-    ? `${isTest ? '[TEST PREVIEW] ' : ''}${batchPrefix}LeetCode Assignment: ${primaryTitle}`
-    : `${isTest ? '[TEST PREVIEW] ' : ''}${batchPrefix}LeetCode Assignments: ${primaryTitle} (+${assignments.length - 1} more)`;
+    ? `${isTest ? '[Test] ' : ''}LeetCode Assignment: ${cleanTitle}`
+    : `${isTest ? '[Test] ' : ''}LeetCode Practice: ${cleanTitle} & ${assignments.length - 1} more problems${partText}`;
 
   const problemsHtml = assignments.map((a, index) => {
-    const title = a.title || a.titleSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const title = (a.title || a.titleSlug).replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const problemUrl = `https://leetcode.com/problems/${a.titleSlug}/`;
     const problemNumber = (startQuestionIndex !== undefined ? startQuestionIndex : 0) + index + 1;
     return `
-      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #a40e19; border-radius: 8px; padding: 16px 20px; margin-bottom: 14px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-          <tr>
-            <td style="vertical-align: top;">
-              <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 4px;">
-                Problem #${problemNumber}
-              </div>
-              <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
-                ${title}
-              </div>
-              <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">
-                Slug: <code>${a.titleSlug}</code>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding-top: 6px;">
-              <a href="${problemUrl}" target="_blank" style="display: inline-block; background-color: #a40e19; color: #ffffff; font-weight: 600; font-size: 13px; text-decoration: none; padding: 8px 16px; border-radius: 6px; box-shadow: 0 2px 4px rgba(164, 14, 25, 0.25);">
-                Solve on LeetCode &rarr;
-              </a>
-            </td>
-          </tr>
-        </table>
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; margin-bottom: 10px;">
+        <div style="font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
+          ${problemNumber}. ${title}
+        </div>
+        <div style="font-size: 13px;">
+          <a href="${problemUrl}" target="_blank" style="color: #a40e19; font-weight: 600; text-decoration: underline;">
+            Solve Problem on LeetCode &rarr;
+          </a>
+          <span style="color: #94a3b8; margin-left: 8px; font-size: 12px;">(Slug: ${a.titleSlug})</span>
+        </div>
       </div>
     `;
   }).join('');
@@ -239,12 +224,12 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
           
           <!-- Header Banner -->
           <tr>
-            <td style="background: linear-gradient(135deg, #a40e19 0%, #7d0b13 100%); padding: 26px 30px; text-align: left;">
+            <td style="background: linear-gradient(135deg, #a40e19 0%, #7d0b13 100%); padding: 24px 28px; text-align: left;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <div style="display: inline-block; width: 34px; height: 34px; line-height: 34px; background-color: #ffffff; color: #a40e19; font-weight: 800; font-size: 19px; border-radius: 8px; text-align: center; margin-right: 10px; vertical-align: middle;">L</div>
-                    <span style="color: #ffffff; font-size: 19px; font-weight: 700; letter-spacing: -0.5px; vertical-align: middle;">LeetCode Tracker</span>
+                    <div style="display: inline-block; width: 32px; height: 32px; line-height: 32px; background-color: #ffffff; color: #a40e19; font-weight: 800; font-size: 18px; border-radius: 6px; text-align: center; margin-right: 10px; vertical-align: middle;">L</div>
+                    <span style="color: #ffffff; font-size: 18px; font-weight: 700; letter-spacing: -0.5px; vertical-align: middle;">LeetCode Tracker</span>
                   </td>
                   <td align="right">
                     <span style="display: inline-block; background-color: rgba(255, 255, 255, 0.2); color: #ffffff; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px;">
@@ -272,7 +257,7 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
               </p>
               
               <p style="margin: 0 0 20px 0; font-size: 15px; line-height: 1.6; color: #475569;">
-                This is a friendly reminder from your mentor that you have <strong>${assignments.length} pending LeetCode assignment${assignments.length > 1 ? 's' : ''}${totalBatches && totalBatches > 1 ? ` (Part ${(batchIndex || 0) + 1} of ${totalBatches})` : ''}</strong> waiting for your submission. Please solve and submit the following problem${assignments.length > 1 ? 's' : ''}:
+                This is a friendly reminder that you have <strong>${assignments.length} pending LeetCode assignment${assignments.length > 1 ? 's' : ''}${totalBatches && totalBatches > 1 ? ` (Part ${(batchIndex || 0) + 1} of ${totalBatches})` : ''}</strong> waiting for your submission. Please solve and submit the following problem${assignments.length > 1 ? 's' : ''}:
               </p>
 
               <!-- Problems List -->
@@ -280,7 +265,7 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
 
               <div style="background-color: #fdf2f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 14px 16px; margin-top: 20px;">
                 <p style="margin: 0 0 6px 0; font-size: 13px; line-height: 1.5; color: #991b1b;">
-                  <strong>Note:</strong> If you have already done any of these questions previously, kindly <strong>resubmit</strong> your solution on the LeetCode portal. The tracker will automatically detect your submission and mark your assignment as completed on the next synchronization.
+                  <strong>Note:</strong> If you previously completed any of these questions, please submit your solution again on LeetCode. The tracker will automatically detect your submission and mark your assignment completed on the next synchronization.
                 </p>
                 <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #7f1d1d;">
                   Please ensure you submit using your registered LeetCode account so your progress is tracked accurately.
@@ -307,22 +292,31 @@ export async function sendMultiAssignmentReminder(options: SendMultiAssignmentOp
 
   // Destination configuration:
   // If 'to' is specified explicitly (like a test email), send directly to 'to'.
-  // If bulk send with BCC, set 'to' to the sender address so students don't see each other's emails, and put recipients in 'bcc'.
-  const effectiveTo = to || `"LeetCode Students" <${senderEmail}>`;
+  // If bulk send with BCC, put first student in 'to' and remaining in 'bcc' to avoid suspicious 'To == From' header flags.
+  let targetTo: string;
+  let targetCc: string[] | undefined = undefined;
+  let targetBcc: string[] | undefined = undefined;
+
+  if (to) {
+    targetTo = to;
+  } else if (cc && cc.length > 0) {
+    targetTo = cc[0];
+    targetCc = cc.length > 1 ? cc.slice(1) : undefined;
+  } else if (bcc && bcc.length > 0) {
+    targetTo = bcc[0];
+    targetBcc = bcc.length > 1 ? bcc.slice(1) : undefined;
+  } else {
+    targetTo = `"Students" <${senderEmail}>`;
+  }
 
   return transporter.sendMail({
     from: `"LeetCode Tracker" <${senderEmail}>`,
-    to: effectiveTo,
-    cc: cc && cc.length > 0 ? cc : undefined,
-    bcc: bcc && bcc.length > 0 ? bcc : undefined,
+    to: targetTo,
+    cc: targetCc,
+    bcc: targetBcc,
     replyTo: senderEmail,
     subject,
-    text: `Hello ${recipientName},\n\nYou have ${assignments.length} pending LeetCode assignment(s) waiting for submission:\n\n${plainTextList}\n\nNote: If you have already done any of these questions previously, kindly resubmit the question on the LeetCode portal. The tracker will automatically detect your submission and record your completion on the next synchronization.\n\nBest regards,\nLeetCode Tracker`,
+    text: `Hello ${recipientName},\n\nYou have ${assignments.length} pending LeetCode assignment(s) waiting for submission:\n\n${plainTextList}\n\nNote: If you previously completed any of these questions, please submit your solution again on LeetCode. The tracker will automatically record your completion on the next synchronization.\n\nBest regards,\nLeetCode Tracker`,
     html: htmlContent,
-    headers: {
-      'X-Priority': '3',
-      'X-MSMail-Priority': 'Normal',
-      'Importance': 'Normal',
-    },
   });
 }

@@ -195,8 +195,11 @@ export async function POST(req: Request) {
     const totalUniquePendingStudents = studentPendingAssignmentIds.size;
     const allUniqueEmails = Array.from(new Set(studentEmailMap.values()));
 
-    // Calculate total estimated dispatches across question chunks (each chunk <= 10 questions)
+    // Calculate total estimated dispatches & total recipient deliveries
+    const SAFE_RECIPIENT_BATCH_SIZE = 20;
     let totalEstimatedDispatches = 0;
+    let totalRecipientDeliveries = 0;
+
     for (const qChunk of questionChunks) {
       const chunkIds = new Set(qChunk.map(a => a.id));
       const chunkEmails = new Set<string>();
@@ -206,8 +209,9 @@ export async function POST(req: Request) {
           if (email) chunkEmails.add(email);
         }
       }
-      const batchesForChunk = Math.ceil(chunkEmails.size / 85) || (chunkEmails.size > 0 ? 1 : 0);
+      const batchesForChunk = Math.ceil(chunkEmails.size / SAFE_RECIPIENT_BATCH_SIZE) || (chunkEmails.size > 0 ? 1 : 0);
       totalEstimatedDispatches += batchesForChunk;
+      totalRecipientDeliveries += chunkEmails.size;
     }
 
     // If preview only, return the statistics without sending
@@ -227,6 +231,9 @@ export async function POST(req: Request) {
         totalRecipientsWithEmail: allUniqueEmails.length,
         skippedNoEmailCount: skippedNoEmailMap.size,
         estimatedBatches: totalEstimatedDispatches || (allUniqueEmails.length > 0 ? questionChunks.length : 0),
+        totalRecipientDeliveries,
+        isOverGmailLimit: totalRecipientDeliveries > 450,
+        gmailDailyLimit: 500,
         skippedSample: Array.from(skippedNoEmailMap.values()).slice(0, 10),
         filterBranch: filterBranch || '',
         filterSection: filterSection || '',
@@ -282,13 +289,12 @@ export async function POST(req: Request) {
         continue;
       }
 
-      // Split recipients into batches of 85 (Gmail BCC safe limit is 100)
-      const RECIPIENT_BATCH_SIZE = 85;
+      // Safe batch size of 20 recipients per message to prevent triggering Gmail anti-spam abuse
+      const RECIPIENT_BATCH_SIZE = 20;
       for (let rIdx = 0; rIdx < chunkEmailList.length; rIdx += RECIPIENT_BATCH_SIZE) {
         const recipientBatch = chunkEmailList.slice(rIdx, rIdx + RECIPIENT_BATCH_SIZE);
         try {
           await sendMultiAssignmentReminder({
-            to: recipientMode === 'cc' ? senderEmail : undefined,
             bcc: recipientMode === 'cc' ? undefined : recipientBatch,
             cc: recipientMode === 'cc' ? recipientBatch : undefined,
             assignments: qChunk.map(a => ({
@@ -307,9 +313,9 @@ export async function POST(req: Request) {
           console.error(`Failed to send question chunk ${qIndex + 1}:`, err);
         }
 
-        // Brief delay between sends to keep SMTP connection stable and avoid rate-limits
+        // 2000ms delay between sends to keep SMTP connection stable and prevent rate-limits
         if (questionChunks.length > 1 || chunkEmailList.length > RECIPIENT_BATCH_SIZE) {
-          await new Promise(r => setTimeout(r, 400));
+          await new Promise(r => setTimeout(r, 2000));
         }
       }
     }
