@@ -7,6 +7,13 @@ import { isAssignmentMatch } from '@/lib/scraping/titleNormalizer';
 
 export const dynamic = 'force-dynamic';
 
+function formatEmailError(errorMsg: string): string {
+  if (errorMsg.includes('550-5.4.5') || errorMsg.toLowerCase().includes('daily user sending limit exceeded')) {
+    return 'Gmail Daily Limit Reached (Error 550-5.4.5): Google has locked this account for up to 24 hours because the 500-recipient limit was exceeded earlier today. To send right now without waiting, update EMAIL_USER and EMAIL_PASS in your .env file to a fresh Gmail account.';
+  }
+  return errorMsg;
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -66,30 +73,35 @@ export async function POST(req: Request) {
     // 1. Direct Test Email preview support
     if (testEmail && typeof testEmail === 'string' && testEmail.includes('@')) {
       const firstChunk = questionChunks[0] || assignments;
-      await sendMultiAssignmentReminder({
-        to: testEmail.trim(),
-        recipientName: (session.user as any)?.name || 'Admin (Test)',
-        assignments: firstChunk.map(a => ({
-          title: a.title || a.titleSlug,
-          titleSlug: a.titleSlug,
-        })),
-        isTest: true,
-        batchIndex: 0,
-        totalBatches: questionChunks.length,
-        startQuestionIndex: 0,
-      });
+      try {
+        await sendMultiAssignmentReminder({
+          to: testEmail.trim(),
+          recipientName: (session.user as any)?.name || 'Admin (Test)',
+          assignments: firstChunk.map(a => ({
+            title: a.title || a.titleSlug,
+            titleSlug: a.titleSlug,
+          })),
+          isTest: true,
+          batchIndex: 0,
+          totalBatches: questionChunks.length,
+          startQuestionIndex: 0,
+        });
 
-      const testMsg = questionChunks.length > 1
-        ? `Test preview of Part 1 (first 10 problems of ${assignments.length}) sent to ${testEmail.trim()}! In live send, ${questionChunks.length} separate emails (up to 10 questions each) will be dispatched.`
-        : `Test digest email with ${assignments.length} problem${assignments.length > 1 ? 's' : ''} sent to ${testEmail.trim()}!`;
+        const testMsg = questionChunks.length > 1
+          ? `Test preview of Part 1 (first ${QUESTION_CHUNK_SIZE} problems of ${assignments.length}) sent to ${testEmail.trim()}! In live send, ${questionChunks.length} separate emails (up to ${QUESTION_CHUNK_SIZE} questions each) will be dispatched.`
+          : `Test digest email with ${assignments.length} problem${assignments.length > 1 ? 's' : ''} sent to ${testEmail.trim()}!`;
 
-      return NextResponse.json({
-        success: true,
-        isTest: true,
-        message: testMsg,
-        assignmentsCount: assignments.length,
-        questionBatchesCount: questionChunks.length,
-      });
+        return NextResponse.json({
+          success: true,
+          isTest: true,
+          message: testMsg,
+          assignmentsCount: assignments.length,
+          questionBatchesCount: questionChunks.length,
+        });
+      } catch (err: any) {
+        console.error('Error sending test email:', err);
+        return NextResponse.json({ error: formatEmailError(err.message || 'Failed to send test email') }, { status: 400 });
+      }
     }
 
     // 2. Query pending student assignments for the selected problems, filtered by branch/section if provided
@@ -381,6 +393,6 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Error in bulk notify route:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: formatEmailError(error.message || 'Internal Server Error') }, { status: 500 });
   }
 }
