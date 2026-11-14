@@ -45,6 +45,9 @@ export default function AssignmentsPage() {
   const [notifyTargetBranch, setNotifyTargetBranch] = useState("");
   const [notifyTargetSection, setNotifyTargetSection] = useState("");
   const [recipientMode, setRecipientMode] = useState<'bcc' | 'cc'>('bcc');
+  const [maxStudentsLimit, setMaxStudentsLimit] = useState<number>(80);
+  const [studentBatchOffset, setStudentBatchOffset] = useState<number>(0);
+  const [questionsPerEmail, setQuestionsPerEmail] = useState<number>(20);
   const [isSendingNotifications, setIsSendingNotifications] = useState(false);
   const [notificationResult, setNotificationResult] = useState<any>(null);
   const [defaultDomain, setDefaultDomain] = useState("");
@@ -290,6 +293,9 @@ export default function AssignmentsPage() {
           defaultDomain: defaultDomain.trim(),
           filterBranch: initialBranch || "",
           filterSection: initialSection || "",
+          questionsPerEmail,
+          maxStudents: maxStudentsLimit || undefined,
+          studentOffset: 0,
           previewOnly: true,
         }),
       });
@@ -311,7 +317,10 @@ export default function AssignmentsPage() {
   const refreshBulkPreview = async (
     branchToUse = notifyTargetBranch, 
     sectionToUse = notifyTargetSection, 
-    domainToUse = defaultDomain
+    domainToUse = defaultDomain,
+    qPerEmail = questionsPerEmail,
+    maxStudents = maxStudentsLimit,
+    offset = studentBatchOffset
   ) => {
     if (targetAssignmentIds.length === 0) return;
     setLoadingBulkPreview(true);
@@ -324,6 +333,9 @@ export default function AssignmentsPage() {
           defaultDomain: domainToUse.trim(),
           filterBranch: branchToUse,
           filterSection: sectionToUse,
+          questionsPerEmail: qPerEmail,
+          maxStudents: maxStudents || undefined,
+          studentOffset: offset || 0,
           previewOnly: true,
         }),
       });
@@ -366,6 +378,9 @@ export default function AssignmentsPage() {
           recipientMode,
           filterBranch: notifyTargetBranch,
           filterSection: notifyTargetSection,
+          questionsPerEmail,
+          maxStudents: maxStudentsLimit || undefined,
+          studentOffset: studentBatchOffset || 0,
         }),
       });
       const data = await res.json();
@@ -1309,7 +1324,120 @@ export default function AssignmentsPage() {
                       <span>Sending to all pending students across all branches and sections.</span>
                     )}
                   </div>
+
+                  {/* Student Batching / Slicing Controls (e.g. 80 students at a time) */}
+                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>
+                        Send to Students in Batches (Safety Limit)
+                      </label>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>
+                        {bulkPreviewData?.totalAvailablePendingStudents || bulkPreviewData?.totalUniquePendingStudents || 0} Total Pending
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                      {[
+                        { label: '80 Students at a time', value: 80 },
+                        { label: '50 Students at a time', value: 50 },
+                        { label: 'All Students at once', value: 0 }
+                      ].map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setMaxStudentsLimit(opt.value);
+                            setStudentBatchOffset(0);
+                            refreshBulkPreview(notifyTargetBranch, notifyTargetSection, defaultDomain, questionsPerEmail, opt.value, 0);
+                          }}
+                          style={{
+                            padding: '4px 10px', fontSize: '0.76rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer',
+                            border: maxStudentsLimit === opt.value ? '1px solid var(--primary)' : '1px solid var(--surface-border)',
+                            background: maxStudentsLimit === opt.value ? 'var(--primary)' : 'white',
+                            color: maxStudentsLimit === opt.value ? 'white' : 'var(--foreground)'
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Batch pagination tabs if total students > batch size */}
+                    {maxStudentsLimit > 0 && bulkPreviewData && (bulkPreviewData.totalAvailablePendingStudents || bulkPreviewData.totalUniquePendingStudents) > maxStudentsLimit && (
+                      <div style={{ background: '#f1f5f9', padding: '8px 10px', borderRadius: '6px', marginTop: '6px' }}>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+                          Select Student Group to Email Now:
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {Array.from({ length: Math.ceil((bulkPreviewData.totalAvailablePendingStudents || bulkPreviewData.totalUniquePendingStudents) / maxStudentsLimit) }).map((_, idx) => {
+                            const start = idx * maxStudentsLimit + 1;
+                            const total = (bulkPreviewData.totalAvailablePendingStudents || bulkPreviewData.totalUniquePendingStudents);
+                            const end = Math.min((idx + 1) * maxStudentsLimit, total);
+                            const isSelected = studentBatchOffset === idx * maxStudentsLimit;
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  const newOffset = idx * maxStudentsLimit;
+                                  setStudentBatchOffset(newOffset);
+                                  refreshBulkPreview(notifyTargetBranch, notifyTargetSection, defaultDomain, questionsPerEmail, maxStudentsLimit, newOffset);
+                                }}
+                                style={{
+                                  padding: '3px 8px', fontSize: '0.74rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 600,
+                                  background: isSelected ? 'var(--primary)' : 'white',
+                                  color: isSelected ? 'white' : '#334155',
+                                  border: isSelected ? '1px solid var(--primary)' : '1px solid #cbd5e1',
+                                  boxShadow: isSelected ? '0 1px 2px rgba(164, 14, 25, 0.2)' : 'none'
+                                }}
+                              >
+                                Group {idx + 1} ({start}–{end})
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Questions Per Email Setting (Chunk Size) */}
+                {targetAssignmentIds.length > 10 && (
+                  <div style={{ background: '#f8fafc', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '12px 14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>
+                        Questions per Email ({targetAssignmentIds.length} Questions Selected)
+                      </label>
+                      <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>
+                        {Math.ceil(targetAssignmentIds.length / questionsPerEmail)} Emails total
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      {[
+                        { label: `20 Qs / Email (${Math.ceil(targetAssignmentIds.length / 20)} Emails) ⭐ Safe for 80 Students`, value: 20 },
+                        { label: `10 Qs / Email (${Math.ceil(targetAssignmentIds.length / 10)} Emails)`, value: 10 },
+                        { label: `All ${targetAssignmentIds.length} in 1 Digest Email`, value: targetAssignmentIds.length }
+                      ].map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setQuestionsPerEmail(opt.value);
+                            refreshBulkPreview(notifyTargetBranch, notifyTargetSection, defaultDomain, opt.value, maxStudentsLimit, studentBatchOffset);
+                          }}
+                          style={{
+                            padding: '5px 10px', fontSize: '0.76rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer',
+                            border: questionsPerEmail === opt.value ? '1px solid var(--primary)' : '1px solid var(--surface-border)',
+                            background: questionsPerEmail === opt.value ? 'var(--primary)' : 'white',
+                            color: questionsPerEmail === opt.value ? 'white' : 'var(--foreground)'
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Live Preview Stats */}
                 {loadingBulkPreview ? (
@@ -1475,8 +1603,8 @@ export default function AssignmentsPage() {
                       <>
                         <div className="animate-spin" style={{ width: 14, height: 14, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
                         <span>
-                          {targetAssignmentIds.length > 10
-                            ? `Dispatching ${Math.ceil(targetAssignmentIds.length / 10)} Emails (10 Qs/Email)...`
+                          {targetAssignmentIds.length > questionsPerEmail
+                            ? `Dispatching ${Math.ceil(targetAssignmentIds.length / questionsPerEmail)} Emails (${questionsPerEmail} Qs/Email)...`
                             : `Sending Email via ${recipientMode.toUpperCase()}...`}
                         </span>
                       </>
@@ -1487,7 +1615,7 @@ export default function AssignmentsPage() {
                           Send Reminders ({bulkPreviewData?.totalRecipientsWithEmail || 0} Students
                           {notifyTargetBranch ? ` in ${notifyTargetBranch}` : ''}
                           {notifyTargetSection ? ` - Sec ${notifyTargetSection}` : ''} &bull;{' '}
-                          {targetAssignmentIds.length > 10 ? `${Math.ceil(targetAssignmentIds.length / 10)} Emails (10 Qs/Email)` : '1 Email'})
+                          {targetAssignmentIds.length > questionsPerEmail ? `${Math.ceil(targetAssignmentIds.length / questionsPerEmail)} Emails (${questionsPerEmail} Qs/Email)` : '1 Email'})
                         </span>
                       </>
                     )}

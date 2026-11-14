@@ -55,8 +55,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'None of the selected assignments were found.' }, { status: 404 });
     }
 
-    // Split questions into chunks of at most 10 questions per email
-    const QUESTION_CHUNK_SIZE = 10;
+    // Split questions into chunks based on user preference (default: 10, or 20/25/all)
+    const rawChunkSize = body.questionsPerEmail ? parseInt(body.questionsPerEmail, 10) : 10;
+    const QUESTION_CHUNK_SIZE = (rawChunkSize && rawChunkSize > 0) ? Math.min(rawChunkSize, 100) : 10;
     const questionChunks: typeof assignments[] = [];
     for (let i = 0; i < assignments.length; i += QUESTION_CHUNK_SIZE) {
       questionChunks.push(assignments.slice(i, i + QUESTION_CHUNK_SIZE));
@@ -177,8 +178,10 @@ export async function POST(req: Request) {
     // Set of assignment IDs pending for each student: studentId -> Set<assignmentId>
     const studentPendingAssignmentIds = new Map<string, Set<string>>();
 
+    const studentRollMap = new Map<string, string>();
     for (const psa of validPendingAssignments) {
       const s = psa.student;
+      studentRollMap.set(s.id, s.rollNumber);
       if (!studentPendingAssignmentIds.has(s.id)) {
         studentPendingAssignmentIds.set(s.id, new Set());
       }
@@ -192,8 +195,38 @@ export async function POST(req: Request) {
       }
     }
 
-    const totalUniquePendingStudents = studentPendingAssignmentIds.size;
-    const allUniqueEmails = Array.from(new Set(studentEmailMap.values()));
+    const totalAvailablePendingStudents = studentPendingAssignmentIds.size;
+    const allPendingStudentIds = Array.from(studentPendingAssignmentIds.keys()).sort((a, b) => {
+      const rollA = studentRollMap.get(a) || '';
+      const rollB = studentRollMap.get(b) || '';
+      return rollA.localeCompare(rollB, undefined, { numeric: true });
+    });
+
+    const parsedMaxStudents = body.maxStudents ? parseInt(body.maxStudents, 10) : undefined;
+    const parsedOffset = body.studentOffset ? parseInt(body.studentOffset, 10) : 0;
+
+    let targetedStudentIds = allPendingStudentIds;
+    if (parsedMaxStudents && parsedMaxStudents > 0) {
+      targetedStudentIds = allPendingStudentIds.slice(parsedOffset, parsedOffset + parsedMaxStudents);
+    }
+    const targetedSet = new Set(targetedStudentIds);
+
+    // Filter studentEmailMap and studentPendingAssignmentIds to targeted students
+    const activeStudentPendingAssignmentIds = new Map<string, Set<string>>();
+    for (const [id, set] of studentPendingAssignmentIds.entries()) {
+      if (targetedSet.has(id)) {
+        activeStudentPendingAssignmentIds.set(id, set);
+      }
+    }
+
+    const activeStudentEmailMap = new Map<string, string>();
+    for (const [id, email] of studentEmailMap.entries()) {
+      if (targetedSet.has(id)) {
+        activeStudentEmailMap.set(id, email);
+      }
+    }
+
+    const activeUniqueEmails = Array.from(new Set(activeStudentEmailMap.values()));
 
     // Calculate total estimated dispatches & total recipient deliveries
     const SAFE_RECIPIENT_BATCH_SIZE = 20;
@@ -203,9 +236,9 @@ export async function POST(req: Request) {
     for (const qChunk of questionChunks) {
       const chunkIds = new Set(qChunk.map(a => a.id));
       const chunkEmails = new Set<string>();
-      for (const [studentId, assignedSet] of studentPendingAssignmentIds.entries()) {
+      for (const [studentId, assignedSet] of activeStudentPendingAssignmentIds.entries()) {
         if (Array.from(assignedSet).some(id => chunkIds.has(id))) {
-          const email = studentEmailMap.get(studentId);
+          const email = activeStudentEmailMap.get(studentId);
           if (email) chunkEmails.add(email);
         }
       }
@@ -227,10 +260,20 @@ export async function POST(req: Request) {
         totalAssignments: assignments.length,
         questionBatchesCount: questionChunks.length,
         questionsPerEmail: QUESTION_CHUNK_SIZE,
-        totalUniquePendingStudents,
-        totalRecipientsWithEmail: allUniqueEmails.length,
+        totalAvailablePendingStudents,
+        currentBatchStudentCount: targetedStudentIds.length,
+        currentBatchRange: [
+          targetedStudentIds.length > 0 ? parsedOffset + 1 : 0,
+          Math.min(parsedOffset + targetedStudentIds.length, totalAvailablePendingStudents)
+        ],
+        hasNextBatch: (parsedOffset + targetedStudentIds.length) < totalAvailablePendingStudents,
+        nextBatchOffset: parsedOffset + targetedStudentIds.length,
+        maxStudents: parsedMaxStudents || 0,
+        studentOffset: parsedOffset,
+        totalUniquePendingStudents: targetedStudentIds.length,
+        totalRecipientsWithEmail: activeUniqueEmails.length,
         skippedNoEmailCount: skippedNoEmailMap.size,
-        estimatedBatches: totalEstimatedDispatches || (allUniqueEmails.length > 0 ? questionChunks.length : 0),
+        estimatedBatches: totalEstimatedDispatches || (activeUniqueEmails.length > 0 ? questionChunks.length : 0),
         totalRecipientDeliveries,
         isOverGmailLimit: totalRecipientDeliveries > 450,
         gmailDailyLimit: 500,
@@ -240,21 +283,21 @@ export async function POST(req: Request) {
       });
     }
 
-    if (allUniqueEmails.length === 0) {
+    if (activeUniqueEmails.length === 0) {
       return NextResponse.json({
         success: true,
-        totalUniquePendingStudents,
+        totalUniquePendingStudents: targetedStudentIds.length,
         totalRecipients: 0,
         skippedNoEmail: skippedNoEmailMap.size,
         emailsSent: 0,
         questionBatchesCount: questionChunks.length,
         assignmentsCount: assignments.length,
-        message: 'No student emails found for the pending students. Please upload student emails or specify a college domain fallback.',
+        message: 'No student emails found for the pending students in this batch. Please upload student emails or specify a college domain fallback.',
         skippedList: Array.from(skippedNoEmailMap.values()).slice(0, 20),
       });
     }
 
-    // 3. Dispatch emails: 10 questions per email, grouped by question chunks
+    // 3. Dispatch emails: grouped by question chunks
     let totalEmailsSent = 0;
     let failedBatches = 0;
     const errors: string[] = [];
@@ -274,12 +317,12 @@ export async function POST(req: Request) {
       const qChunk = questionChunks[qIndex];
       const chunkIds = new Set(qChunk.map(a => a.id));
 
-      // Get all student emails who have at least 1 pending question in this 10-question chunk
+      // Get all student emails who have at least 1 pending question in this question chunk
       const chunkEmailsSet = new Set<string>();
-      for (const [studentId, assignedSet] of studentPendingAssignmentIds.entries()) {
+      for (const [studentId, assignedSet] of activeStudentPendingAssignmentIds.entries()) {
         const hasPending = Array.from(assignedSet).some(id => chunkIds.has(id));
         if (hasPending) {
-          const email = studentEmailMap.get(studentId);
+          const email = activeStudentEmailMap.get(studentId);
           if (email) chunkEmailsSet.add(email);
         }
       }
@@ -322,8 +365,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: totalEmailsSent > 0,
-      totalUniquePendingStudents,
-      totalRecipients: allUniqueEmails.length,
+      totalUniquePendingStudents: targetedStudentIds.length,
+      totalRecipients: activeUniqueEmails.length,
       skippedNoEmail: skippedNoEmailMap.size,
       emailsSent: totalEmailsSent,
       questionBatchesCount: questionChunks.length,
