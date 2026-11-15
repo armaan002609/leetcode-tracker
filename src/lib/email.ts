@@ -11,24 +11,40 @@ export interface SendReminderOptions {
 let cachedTransporter: nodemailer.Transporter | null = null;
 
 export function getEmailTransporter() {
+  const host = process.env.EMAIL_HOST;
+  const port = process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT, 10) : 587;
   const user = process.env.EMAIL_USER || 'leetcodetrackernotify@gmail.com';
   const pass = process.env.EMAIL_PASS;
 
   if (!pass) {
-    throw new Error('EMAIL_PASS is not configured. Please add the 16-character Google App Password in .env or Vercel Environment Variables.');
+    throw new Error('EMAIL_PASS is not configured. Please add the password or API key in .env.');
   }
 
   if (!cachedTransporter) {
-    cachedTransporter = nodemailer.createTransport({
-      service: 'gmail',
-      pool: true,
-      maxConnections: 1,
-      maxMessages: 100,
-      auth: {
-        user,
-        pass,
-      },
-    });
+    if (host) {
+      // Custom SMTP Relay (e.g. Brevo, SendGrid, Mailgun, Amazon SES)
+      cachedTransporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: {
+          user,
+          pass,
+        },
+      });
+    } else {
+      // Default Gmail SMTP
+      cachedTransporter = nodemailer.createTransport({
+        service: 'gmail',
+        pool: true,
+        maxConnections: 1,
+        maxMessages: 100,
+        auth: {
+          user,
+          pass,
+        },
+      });
+    }
   }
 
   return cachedTransporter;
