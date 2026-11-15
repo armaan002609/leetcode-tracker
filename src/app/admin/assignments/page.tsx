@@ -1414,7 +1414,8 @@ export default function AssignmentsPage() {
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       {[
-                        { label: `20 Qs / Email (${Math.ceil(targetAssignmentIds.length / 20)} Emails) ⭐ Safe for 80 Students`, value: 20 },
+                        { label: `25 Qs / Email (${Math.ceil(targetAssignmentIds.length / 25)} Emails) ⭐ Recommended`, value: 25 },
+                        { label: `20 Qs / Email (${Math.ceil(targetAssignmentIds.length / 20)} Emails)`, value: 20 },
                         { label: `10 Qs / Email (${Math.ceil(targetAssignmentIds.length / 10)} Emails)`, value: 10 },
                         { label: `All ${targetAssignmentIds.length} in 1 Digest Email`, value: targetAssignmentIds.length }
                       ].map(opt => (
