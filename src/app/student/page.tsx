@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   GraduationCap,
   LogOut,
-  RefreshCw,
   CheckCircle2,
   Clock,
   ExternalLink,
@@ -72,7 +71,6 @@ export default function StudentPortalPage() {
 
   const [data, setData] = useState<StudentPortalData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
@@ -91,12 +89,8 @@ export default function StudentPortalPage() {
     }
   }, [status, session, router]);
 
-  const fetchPortalData = async (isManualRefresh = false) => {
-    if (isManualRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
+  const fetchPortalData = async () => {
+    setLoading(true);
     setError("");
 
     try {
@@ -115,7 +109,6 @@ export default function StudentPortalPage() {
       setError(e.message || "Network error loading your progress.");
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
@@ -183,27 +176,6 @@ export default function StudentPortalPage() {
           )}
           <button
             type="button"
-            onClick={() => fetchPortalData(true)}
-            disabled={refreshing}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "6px 12px",
-              borderRadius: "6px",
-              fontSize: "0.82rem",
-              fontWeight: 600,
-              color: "white",
-              background: "rgba(255,255,255,0.16)",
-              border: "1px solid rgba(255,255,255,0.3)",
-              cursor: refreshing ? "not-allowed" : "pointer",
-            }}
-          >
-            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-            <span>{refreshing ? "Refreshing..." : "Refresh"}</span>
-          </button>
-          <button
-            type="button"
             onClick={async () => {
               await signOut({ redirect: false });
               router.push("/login");
@@ -233,7 +205,7 @@ export default function StudentPortalPage() {
           <div className="dashboard-card" style={{ padding: "32px", textAlign: "center" }}>
             <AlertCircle size={32} style={{ color: "var(--danger)", margin: "0 auto 12px" }} />
             <div style={{ color: "var(--danger)", marginBottom: "16px", fontWeight: 600 }}>{error}</div>
-            <button type="button" onClick={() => fetchPortalData(true)} className="btn btn-primary">
+            <button type="button" onClick={() => fetchPortalData()} className="btn btn-primary">
               Try Again
             </button>
           </div>
