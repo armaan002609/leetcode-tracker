@@ -26,6 +26,7 @@ export async function GET() {
         id: true,
         portalUsername: true,
         enrollmentNo: true,
+        isLocked: true,
         studentName: true,
         stream: true,
         semester: true,
@@ -37,6 +38,16 @@ export async function GET() {
 
     if (!credential) {
       return NextResponse.json({ error: 'Student account no longer exists.' }, { status: 404 });
+    }
+
+    if (credential.isLocked) {
+      return NextResponse.json(
+        {
+          error: 'Your student ID is currently locked by the admin. Please contact your mentor or admin.',
+          locked: true,
+        },
+        { status: 403 }
+      );
     }
 
     let resolvedStudentId = credential.studentId;

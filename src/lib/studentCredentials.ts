@@ -19,6 +19,7 @@ export async function ensureStudentCredentialTable(): Promise<void> {
         "portalUsername" TEXT NOT NULL,
         "enrollmentNo" TEXT NOT NULL,
         "passwordHash" TEXT NOT NULL,
+        "isLocked" BOOLEAN NOT NULL DEFAULT false,
         "studentName" TEXT,
         "stream" TEXT,
         "semester" TEXT,
@@ -29,6 +30,11 @@ export async function ensureStudentCredentialTable(): Promise<void> {
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT "StudentCredential_pkey" PRIMARY KEY ("id")
       );
+    `);
+
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "StudentCredential"
+      ADD COLUMN IF NOT EXISTS "isLocked" BOOLEAN NOT NULL DEFAULT false;
     `);
 
     await prisma.$executeRawUnsafe(`

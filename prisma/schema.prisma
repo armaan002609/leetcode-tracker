@@ -99,6 +99,7 @@ model StudentCredential {
   portalUsername String   @unique
   enrollmentNo   String
   passwordHash   String
+  isLocked       Boolean  @default(false)
   studentName    String?
   stream         String?
   semester       String?

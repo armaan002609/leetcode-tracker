@@ -102,7 +102,10 @@ export default function StudentPortalPage() {
         return;
       }
       const json = await res.json();
-      if (!res.ok) {
+      if (res.status === 403 && json.locked) {
+        setError(json.error || "Your student ID is currently locked by the admin.");
+        setData(null);
+      } else if (!res.ok) {
         setError(json.error || "Failed to load your progress.");
       } else {
         setData(json);

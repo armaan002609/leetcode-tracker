@@ -75,6 +75,10 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (studentCred && await verifyPortalPassword(password, studentCred.passwordHash)) {
+            if (studentCred.isLocked) {
+              throw new Error("Your student ID is currently locked. Please contact your admin or mentor.");
+            }
+
             let resolvedStudentId = studentCred.studentId;
             if (!resolvedStudentId) {
               const matchedId = await findMatchingStudentId(
@@ -99,7 +103,10 @@ export const authOptions: NextAuthOptions = {
               enrollmentNo: studentCred.enrollmentNo,
             } as any;
           }
-        } catch (e) {
+        } catch (e: any) {
+          if (e?.message?.includes("currently locked")) {
+            throw e;
+          }
           console.error("Auth error:", e);
         }
 

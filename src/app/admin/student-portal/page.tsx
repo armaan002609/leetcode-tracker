@@ -53,12 +53,17 @@ export default function StudentPortalAccessAdminPage() {
     totalCredentials: 0,
     linkedCount: 0,
     unlinkedCount: 0,
+    lockedCount: 0,
+    unlockedCount: 0,
     totalStudents: 0,
   });
   const [credentials, setCredentials] = useState<any[]>([]);
   const [loadingList, setLoadingList] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "linked" | "unlinked">("all");
+  const [filterType, setFilterType] = useState<"all" | "unlocked" | "locked" | "linked" | "unlinked">("all");
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [isBulkTogglingLock, setIsBulkTogglingLock] = useState(false);
+  const [lockActionMessage, setLockActionMessage] = useState("");
 
   // Upload / Paste states
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -170,6 +175,8 @@ export default function StudentPortalAccessAdminPage() {
           totalCredentials: data.totalCredentials,
           linkedCount: data.linkedCount,
           unlinkedCount: data.unlinkedCount,
+          lockedCount: data.lockedCount ?? 0,
+          unlockedCount: data.unlockedCount ?? data.totalCredentials,
           totalStudents: data.totalStudents,
         });
         setCredentials(data.credentials || []);
@@ -178,6 +185,84 @@ export default function StudentPortalAccessAdminPage() {
       console.error(e);
     } finally {
       setLoadingList(false);
+    }
+  };
+
+  const handleToggleIndividualLock = async (cred: any) => {
+    const nextLocked = !cred.isLocked;
+    setTogglingId(cred.id);
+    setLockActionMessage("");
+    try {
+      const res = await fetch("/api/admin/student-credentials", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: cred.id, isLocked: nextLocked }),
+      });
+      if (res.status === 403) {
+        setUnlocked(false);
+        return;
+      }
+      const data = await res.json();
+      if (res.ok) {
+        setCredentials((prev) => {
+          const updated = prev.map((item) =>
+            item.id === cred.id ? { ...item, isLocked: nextLocked } : item
+          );
+          if (filterType === "locked" && !nextLocked) {
+            return updated.filter((item) => item.id !== cred.id);
+          }
+          if (filterType === "unlocked" && nextLocked) {
+            return updated.filter((item) => item.id !== cred.id);
+          }
+          return updated;
+        });
+        setStats((prev) => ({
+          ...prev,
+          lockedCount: Math.max(0, prev.lockedCount + (nextLocked ? 1 : -1)),
+          unlockedCount: Math.max(0, prev.unlockedCount + (nextLocked ? -1 : 1)),
+        }));
+        setLockActionMessage(
+          data.message || `${nextLocked ? "Locked" : "Unlocked"} ${cred.portalUsername}.`
+        );
+      } else {
+        alert(data.error || "Failed to update lock status.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const handleBulkLockToggle = async (lockAll: boolean) => {
+    const confirmText = lockAll
+      ? `Lock all ${stats.totalCredentials} student IDs? Students will NOT be able to log in until unlocked.`
+      : `Unlock all ${stats.totalCredentials} student IDs so students can log in?`;
+    if (!window.confirm(confirmText)) return;
+
+    setIsBulkTogglingLock(true);
+    setLockActionMessage("");
+    try {
+      const res = await fetch("/api/admin/student-credentials", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scope: "all", isLocked: lockAll }),
+      });
+      if (res.status === 403) {
+        setUnlocked(false);
+        return;
+      }
+      const data = await res.json();
+      if (res.ok) {
+        setLockActionMessage(data.message || (lockAll ? "All student IDs locked." : "All student IDs unlocked."));
+        await fetchCredentials();
+      } else {
+        alert(data.error || "Failed to update lock status.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsBulkTogglingLock(false);
     }
   };
 
@@ -733,6 +818,17 @@ export default function StudentPortalAccessAdminPage() {
                   {stats.unlinkedCount}
                 </div>
               </div>
+              <div className="dashboard-card" style={{ margin: 0, padding: "20px", borderLeft: "4px solid #dc2626" }}>
+                <div style={{ fontSize: "0.78rem", color: "#dc2626", textTransform: "uppercase", fontWeight: 700 }}>
+                  Locked Student IDs
+                </div>
+                <div style={{ fontSize: "1.8rem", fontWeight: 800, marginTop: "6px", color: "#dc2626" }}>
+                  {stats.lockedCount}
+                  <span style={{ fontSize: "0.82rem", fontWeight: 500, color: "var(--muted)", marginLeft: "8px" }}>
+                    ({stats.unlockedCount} active)
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Upload / Paste / Manual Card */}
@@ -1025,7 +1121,7 @@ export default function StudentPortalAccessAdminPage() {
               <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                   <h3 className="card-title" style={{ margin: 0 }}>Uploaded Student Logins</h3>
-                  <div style={{ display: "flex", gap: "6px" }}>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                     <button
                       type="button"
                       onClick={() => setFilterType("all")}
@@ -1036,6 +1132,28 @@ export default function StudentPortalAccessAdminPage() {
                       }}
                     >
                       All ({stats.totalCredentials})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterType("unlocked")}
+                      style={{
+                        padding: "4px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
+                        background: filterType === "unlocked" ? "#059669" : "#f1f5f9",
+                        color: filterType === "unlocked" ? "white" : "var(--muted)",
+                      }}
+                    >
+                      Unlocked ({stats.unlockedCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterType("locked")}
+                      style={{
+                        padding: "4px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
+                        background: filterType === "locked" ? "#dc2626" : "#f1f5f9",
+                        color: filterType === "locked" ? "white" : "var(--muted)",
+                      }}
+                    >
+                      Locked ({stats.lockedCount})
                     </button>
                     <button
                       type="button"
@@ -1062,25 +1180,99 @@ export default function StudentPortalAccessAdminPage() {
                   </div>
                 </div>
 
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    fetchCredentials(searchTerm);
-                  }}
-                  style={{ display: "flex", gap: "8px" }}
-                >
-                  <input
-                    type="text"
-                    placeholder="Search roll, enroll, name..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--surface-border)", fontSize: "0.84rem", width: "210px" }}
-                  />
-                  <button type="submit" className="btn btn-outline" style={{ padding: "6px 10px" }}>
-                    <Search size={14} />
-                  </button>
-                </form>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                  {stats.totalCredentials > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={isBulkTogglingLock || stats.unlockedCount === 0}
+                        onClick={() => handleBulkLockToggle(true)}
+                        className="btn btn-outline"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          padding: "6px 11px",
+                          fontSize: "0.78rem",
+                          color: "#dc2626",
+                          borderColor: "#fecaca",
+                          background: "#fef2f2",
+                          opacity: isBulkTogglingLock || stats.unlockedCount === 0 ? 0.5 : 1,
+                          cursor: isBulkTogglingLock || stats.unlockedCount === 0 ? "not-allowed" : "pointer",
+                        }}
+                        title="Lock all student IDs so no student can log in"
+                      >
+                        <Lock size={13} /> Lock All IDs
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isBulkTogglingLock || stats.lockedCount === 0}
+                        onClick={() => handleBulkLockToggle(false)}
+                        className="btn btn-outline"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          padding: "6px 11px",
+                          fontSize: "0.78rem",
+                          color: "#059669",
+                          borderColor: "#a7f3d0",
+                          background: "#ecfdf5",
+                          opacity: isBulkTogglingLock || stats.lockedCount === 0 ? 0.5 : 1,
+                          cursor: isBulkTogglingLock || stats.lockedCount === 0 ? "not-allowed" : "pointer",
+                        }}
+                        title="Unlock all student IDs so students can log in"
+                      >
+                        <Unlock size={13} /> Unlock All IDs
+                      </button>
+                    </>
+                  )}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      fetchCredentials(searchTerm);
+                    }}
+                    style={{ display: "flex", gap: "8px" }}
+                  >
+                    <input
+                      type="text"
+                      placeholder="Search roll, enroll, name..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{ padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--surface-border)", fontSize: "0.84rem", width: "200px" }}
+                    />
+                    <button type="submit" className="btn btn-outline" style={{ padding: "6px 10px" }}>
+                      <Search size={14} />
+                    </button>
+                  </form>
+                </div>
               </div>
+
+              {lockActionMessage && (
+                <div style={{
+                  padding: "10px 16px",
+                  background: "#f8fafc",
+                  borderBottom: "1px solid var(--surface-border)",
+                  fontSize: "0.84rem",
+                  color: "#0f172a",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "10px",
+                }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                    <CheckCircle2 size={15} color="#059669" />
+                    {lockActionMessage}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setLockActionMessage("")}
+                    style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontSize: "0.78rem" }}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
 
               <div className="card-body" style={{ padding: 0 }}>
                 {loadingList ? (
@@ -1090,7 +1282,7 @@ export default function StudentPortalAccessAdminPage() {
                   </div>
                 ) : credentials.length === 0 ? (
                   <div style={{ padding: "32px", textAlign: "center", color: "var(--muted)" }}>
-                    No student portal logins found yet. Upload a CSV/Excel file above to get started.
+                    No student portal logins found for this filter.
                   </div>
                 ) : (
                   <div className="data-table-wrapper" style={{ maxHeight: "480px", overflowY: "auto" }}>
@@ -1102,46 +1294,96 @@ export default function StudentPortalAccessAdminPage() {
                           <th style={{ padding: "10px 14px" }}>Student Name</th>
                           <th style={{ padding: "10px 14px" }}>Stream / Sem / Sec</th>
                           <th style={{ padding: "10px 14px" }}>Roster Link</th>
+                          <th style={{ padding: "10px 14px" }}>Login Access</th>
                           <th style={{ padding: "10px 14px", textAlign: "right" }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {credentials.map((c) => (
-                          <tr key={c.id}>
-                            <td style={{ padding: "10px 14px", fontWeight: 600 }}>{c.portalUsername}</td>
-                            <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "var(--muted)" }}>
-                              {c.enrollmentNo}
-                            </td>
-                            <td style={{ padding: "10px 14px" }}>
-                              {c.student?.name || c.studentName || "—"}
-                            </td>
-                            <td style={{ padding: "10px 14px", fontSize: "0.83rem", color: "var(--muted)" }}>
-                              {[c.stream || c.student?.branch, c.semester ? `Sem ${c.semester}` : null, c.section ? `Sec ${c.section}` : null, c.labBatch]
-                                .filter(Boolean)
-                                .join(" • ") || "—"}
-                            </td>
-                            <td style={{ padding: "10px 14px" }}>
-                              {c.studentId ? (
-                                <span className="status-badge success">
-                                  Linked ({c.student?.totalSolved ?? 0} solved)
-                                </span>
-                              ) : (
-                                <span className="status-badge pending">Unlinked</span>
-                              )}
-                            </td>
-                            <td style={{ padding: "10px 14px", textAlign: "right" }}>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteCredential(c.id, c.portalUsername)}
-                                className="icon-btn"
-                                title="Delete Login"
-                                style={{ background: "transparent", border: "none", color: "var(--danger)", cursor: "pointer", padding: 4 }}
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                        {credentials.map((c) => {
+                          const isLocked = Boolean(c.isLocked);
+                          const isTogglingThis = togglingId === c.id;
+                          return (
+                            <tr key={c.id} style={{ background: isLocked ? "#fff5f5" : undefined }}>
+                              <td style={{ padding: "10px 14px", fontWeight: 600 }}>{c.portalUsername}</td>
+                              <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "var(--muted)" }}>
+                                {c.enrollmentNo}
+                              </td>
+                              <td style={{ padding: "10px 14px" }}>
+                                {c.student?.name || c.studentName || "—"}
+                              </td>
+                              <td style={{ padding: "10px 14px", fontSize: "0.83rem", color: "var(--muted)" }}>
+                                {[c.stream || c.student?.branch, c.semester ? `Sem ${c.semester}` : null, c.section ? `Sec ${c.section}` : null, c.labBatch]
+                                  .filter(Boolean)
+                                  .join(" • ") || "—"}
+                              </td>
+                              <td style={{ padding: "10px 14px" }}>
+                                {c.studentId ? (
+                                  <span className="status-badge success">
+                                    Linked ({c.student?.totalSolved ?? 0} solved)
+                                  </span>
+                                ) : (
+                                  <span className="status-badge pending">Unlinked</span>
+                                )}
+                              </td>
+                              <td style={{ padding: "10px 14px" }}>
+                                {isLocked ? (
+                                  <span className="status-badge danger" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                    <Lock size={12} /> Locked
+                                  </span>
+                                ) : (
+                                  <span className="status-badge success" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                    <Unlock size={12} /> Unlocked
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ padding: "10px 14px", textAlign: "right", whiteSpace: "nowrap" }}>
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                                  <button
+                                    type="button"
+                                    disabled={isTogglingThis || isBulkTogglingLock}
+                                    onClick={() => handleToggleIndividualLock(c)}
+                                    className="btn btn-outline"
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: "5px",
+                                      padding: "4px 10px",
+                                      fontSize: "0.76rem",
+                                      fontWeight: 600,
+                                      color: isLocked ? "#059669" : "#dc2626",
+                                      borderColor: isLocked ? "#a7f3d0" : "#fecaca",
+                                      background: isLocked ? "#ecfdf5" : "#fef2f2",
+                                      cursor: isTogglingThis ? "not-allowed" : "pointer",
+                                      opacity: isTogglingThis ? 0.6 : 1,
+                                    }}
+                                    title={isLocked ? `Unlock ${c.portalUsername} so student can log in` : `Lock ${c.portalUsername} so student cannot log in`}
+                                  >
+                                    {isLocked ? (
+                                      <>
+                                        <Unlock size={12} />
+                                        <span>{isTogglingThis ? "Unlocking..." : "Unlock"}</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Lock size={12} />
+                                        <span>{isTogglingThis ? "Locking..." : "Lock"}</span>
+                                      </>
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCredential(c.id, c.portalUsername)}
+                                    className="icon-btn"
+                                    title="Delete Login"
+                                    style={{ background: "transparent", border: "none", color: "var(--danger)", cursor: "pointer", padding: 4 }}
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

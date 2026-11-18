@@ -24,7 +24,11 @@ export default function LoginPage() {
     });
 
     if (res?.error) {
-      setError("Invalid username or password");
+      setError(
+        res.error.includes("currently locked")
+          ? res.error
+          : "Invalid username or password"
+      );
       setLoading(false);
     } else {
       const updatedSession = await getSession();

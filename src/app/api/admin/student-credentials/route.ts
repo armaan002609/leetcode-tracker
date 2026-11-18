@@ -52,7 +52,7 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const search = (searchParams.get('search') || '').trim();
-    const filter = searchParams.get('filter') || 'all'; // 'all' | 'linked' | 'unlinked'
+    const filter = searchParams.get('filter') || 'all'; // 'all' | 'linked' | 'unlinked' | 'locked' | 'unlocked'
 
     const where: any = {};
     const conditions: any[] = [];
@@ -73,15 +73,20 @@ export async function GET(req: Request) {
       conditions.push({ studentId: { not: null } });
     } else if (filter === 'unlinked') {
       conditions.push({ studentId: null });
+    } else if (filter === 'locked') {
+      conditions.push({ isLocked: true });
+    } else if (filter === 'unlocked') {
+      conditions.push({ isLocked: false });
     }
 
     if (conditions.length > 0) {
       where.AND = conditions;
     }
 
-    const [totalCredentials, linkedCount, totalStudents, credentials] = await Promise.all([
+    const [totalCredentials, linkedCount, lockedCount, totalStudents, credentials] = await Promise.all([
       prisma.studentCredential.count(),
       prisma.studentCredential.count({ where: { studentId: { not: null } } }),
+      prisma.studentCredential.count({ where: { isLocked: true } }),
       prisma.student.count(),
       prisma.studentCredential.findMany({
         where,
@@ -91,6 +96,7 @@ export async function GET(req: Request) {
           id: true,
           portalUsername: true,
           enrollmentNo: true,
+          isLocked: true,
           studentName: true,
           stream: true,
           semester: true,
@@ -117,6 +123,8 @@ export async function GET(req: Request) {
       totalCredentials,
       linkedCount,
       unlinkedCount: totalCredentials - linkedCount,
+      lockedCount,
+      unlockedCount: totalCredentials - lockedCount,
       totalStudents,
       credentials,
     });
@@ -442,6 +450,66 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error('Error in /api/admin/student-credentials POST:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const guard = await requireUnlockedAdmin();
+    if (guard) return guard;
+
+    await ensureStudentCredentialTable();
+
+    const body = await req.json().catch(() => ({}));
+    if (typeof body.isLocked !== 'boolean') {
+      return NextResponse.json({ error: 'isLocked boolean is required.' }, { status: 400 });
+    }
+
+    const isLocked = body.isLocked;
+
+    // Bulk lock/unlock all student IDs
+    if (body.scope === 'all') {
+      const result = await prisma.studentCredential.updateMany({
+        data: { isLocked },
+      });
+
+      return NextResponse.json({
+        success: true,
+        scope: 'all',
+        isLocked,
+        updatedCount: result.count,
+        message: isLocked
+          ? `Locked all ${result.count} student IDs. Students cannot log in until unlocked.`
+          : `Unlocked all ${result.count} student IDs. Students can now log in.`,
+      });
+    }
+
+    // Individual student ID lock/unlock
+    const id = typeof body.id === 'string' ? body.id.trim() : '';
+    if (!id) {
+      return NextResponse.json({ error: 'Credential id or scope="all" is required.' }, { status: 400 });
+    }
+
+    const updated = await prisma.studentCredential.update({
+      where: { id },
+      data: { isLocked },
+      select: {
+        id: true,
+        portalUsername: true,
+        isLocked: true,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      credential: updated,
+      message: updated.isLocked
+        ? `Locked student ID ${updated.portalUsername}.`
+        : `Unlocked student ID ${updated.portalUsername}.`,
+    });
+  } catch (error: any) {
+    console.error('Error in /api/admin/student-credentials PATCH:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
