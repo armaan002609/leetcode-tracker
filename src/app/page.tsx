@@ -68,13 +68,15 @@ export default function Dashboard() {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
 
+  const userRole = (session?.user as any)?.role as string | undefined;
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
-    } else if (status === "authenticated" && (session?.user as any)?.role === "student") {
+    } else if (status === "authenticated" && userRole === "student") {
       router.replace("/student");
     }
-  }, [status, session, router]);
+  }, [status, userRole, router]);
 
   const fetchStudents = async () => {
     try {
@@ -91,7 +93,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (status === "authenticated" && (session?.user as any)?.role !== "student") {
+    if (status === "authenticated" && userRole && userRole !== "student") {
       fetchStudents();
       if (isAdmin) {
         fetch('/api/users').then(async r => {
@@ -99,7 +101,7 @@ export default function Dashboard() {
         });
       }
     }
-  }, [status, session, isAdmin]);
+  }, [status, userRole, isAdmin]);
 
   const scrapeQueue = async (rollNumbersToScrape: string[]) => {
     if (rollNumbersToScrape.length === 0) return;

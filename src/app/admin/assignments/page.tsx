@@ -101,16 +101,18 @@ export default function AssignmentsPage() {
     }
   };
 
+  const userRole = (session?.user as any)?.role as string | undefined;
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
-    } else if (status === "authenticated" && (session?.user as any)?.role !== 'admin') {
-      router.push("/");
+    } else if (status === "authenticated" && userRole !== 'admin') {
+      router.push(userRole === 'student' ? '/student' : '/');
     } else if (status === "authenticated") {
       fetchAssignments();
       fetchBranches();
     }
-  }, [status, router, session]);
+  }, [status, router, userRole]);
 
   const fetchBranches = async () => {
     try {

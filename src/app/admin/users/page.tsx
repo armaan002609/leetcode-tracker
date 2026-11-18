@@ -44,15 +44,17 @@ export default function UserManagementPage() {
   const [resetPasswordError, setResetPasswordError] = useState("");
   const [resetPasswordSuccess, setResetPasswordSuccess] = useState("");
 
+  const userRole = (session?.user as any)?.role as string | undefined;
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
-    } else if (status === "authenticated" && (session?.user as any)?.role !== 'admin') {
-      router.push("/");
+    } else if (status === "authenticated" && userRole !== 'admin') {
+      router.push(userRole === 'student' ? '/student' : '/');
     } else if (status === "authenticated") {
       fetchUsers();
     }
-  }, [status, router, session]);
+  }, [status, router, userRole]);
 
   const fetchUsers = async () => {
     try {

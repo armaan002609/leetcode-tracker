@@ -64,11 +64,15 @@ export default function DataExplorer() {
     }
   };
 
+  const userRole = (session?.user as any)?.role as string | undefined;
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
+    } else if (status === "authenticated" && userRole !== "admin") {
+      router.push(userRole === "student" ? "/student" : "/");
     }
-  }, [status, router]);
+  }, [status, userRole, router]);
 
   const fetchBranches = async () => {
     try {

@@ -76,18 +76,20 @@ export default function StudentPortalPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const userRole = (session?.user as any)?.role as string | undefined;
+  const userId = (session?.user as any)?.id as string | undefined;
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/login");
     } else if (status === "authenticated") {
-      const role = (session?.user as any)?.role;
-      if (role !== "student") {
+      if (userRole !== "student") {
         router.replace("/");
       } else {
         fetchPortalData();
       }
     }
-  }, [status, session, router]);
+  }, [status, userRole, userId, router]);
 
   const fetchPortalData = async () => {
     setLoading(true);

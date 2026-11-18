@@ -14,13 +14,15 @@ export default function UploadPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
+  const userRole = (session?.user as any)?.role as string | undefined;
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/login");
-    } else if (status === "authenticated" && (session?.user as any)?.role !== "admin") {
-      router.replace((session?.user as any)?.role === "student" ? "/student" : "/");
+    } else if (status === "authenticated" && userRole !== "admin") {
+      router.replace(userRole === "student" ? "/student" : "/");
     }
-  }, [status, session, router]);
+  }, [status, userRole, router]);
   
   const [activeTab, setActiveTab] = useState<"bulk" | "manual">("bulk");
   const [rows, setRows] = useState<Omit<StudentRow, "id">[]>([]);

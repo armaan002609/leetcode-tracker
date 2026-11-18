@@ -83,15 +83,17 @@ export default function StudentPortalAccessAdminPage() {
   const [manualError, setManualError] = useState("");
   const [manualSuccess, setManualSuccess] = useState("");
 
+  const userRole = (session?.user as any)?.role as string | undefined;
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
-    } else if (status === "authenticated" && (session?.user as any)?.role !== "admin") {
-      router.push("/");
+    } else if (status === "authenticated" && userRole !== "admin") {
+      router.push(userRole === "student" ? "/student" : "/");
     } else if (status === "authenticated") {
       checkLockStatus();
     }
-  }, [status, session, router]);
+  }, [status, userRole, router]);
 
   useEffect(() => {
     if (unlocked) {

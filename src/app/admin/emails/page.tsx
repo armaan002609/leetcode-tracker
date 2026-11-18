@@ -42,15 +42,17 @@ export default function StudentEmailsPage() {
   const [editingEmailValue, setEditingEmailValue] = useState("");
   const [isSavingInline, setIsSavingInline] = useState(false);
 
+  const userRole = (session?.user as any)?.role as string | undefined;
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
-    } else if (status === "authenticated" && (session?.user as any)?.role !== "admin") {
-      router.push("/");
+    } else if (status === "authenticated" && userRole !== "admin") {
+      router.push(userRole === "student" ? "/student" : "/");
     } else if (status === "authenticated") {
       fetchData();
     }
-  }, [status, router, session, filterType]);
+  }, [status, router, userRole, filterType]);
 
   const fetchData = async () => {
     setLoading(true);
