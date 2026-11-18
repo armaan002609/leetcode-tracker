@@ -10,6 +10,23 @@ export interface SendReminderOptions {
 
 let cachedTransporter: nodemailer.Transporter | null = null;
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export function getSenderEmail(): string {
+  return (
+    process.env.EMAIL_FROM ||
+    process.env.EMAIL_USER ||
+    'leetcodetrackernotify@gmail.com'
+  ).trim();
+}
+
 export function getEmailTransporter() {
   const host = process.env.EMAIL_HOST;
   const port = process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT, 10) : 587;
@@ -33,12 +50,9 @@ export function getEmailTransporter() {
         },
       });
     } else {
-      // Default Gmail SMTP
+      // Default Gmail SMTP (no pooling so serverless sends stay clean)
       cachedTransporter = nodemailer.createTransport({
         service: 'gmail',
-        pool: true,
-        maxConnections: 1,
-        maxMessages: 100,
         auth: {
           user,
           pass,
@@ -53,105 +67,56 @@ export function getEmailTransporter() {
 export async function sendAssignmentReminder(options: SendReminderOptions) {
   const { to, studentName, rollNumber, assignmentTitle, titleSlug } = options;
   const problemUrl = `https://leetcode.com/problems/${titleSlug}/`;
-  const senderEmail = process.env.EMAIL_USER || 'leetcodetrackernotify@gmail.com';
+  const senderEmail = getSenderEmail();
   const displayTitle = assignmentTitle || titleSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+  const safeName = escapeHtml(studentName);
+  const safeRoll = escapeHtml(rollNumber);
+  const safeTitle = escapeHtml(displayTitle);
+  const safeUrl = escapeHtml(problemUrl);
 
   const transporter = getEmailTransporter();
 
+  // Lightweight, natural mentor email format (avoids heavy marketing HTML/CTA buttons
+  // and automated-footer boilerplate that trigger Gmail's "appears suspicious" filter)
   const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pending LeetCode Assignment Reminder</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 32px 16px;">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); overflow: hidden; border: 1px solid #e2e8f0;" cellspacing="0" cellpadding="0">
-          
-          <!-- Header Banner -->
-          <tr>
-            <td style="background: linear-gradient(135deg, #a40e19 0%, #7d0b13 100%); padding: 28px 32px; text-align: left;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td>
-                    <div style="display: inline-block; width: 36px; height: 36px; line-height: 36px; background-color: #ffffff; color: #a40e19; font-weight: 800; font-size: 20px; border-radius: 8px; text-align: center; margin-right: 12px; vertical-align: middle;">L</div>
-                    <span style="color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px; vertical-align: middle;">LeetCode Tracker</span>
-                  </td>
-                  <td align="right">
-                    <span style="display: inline-block; background-color: rgba(255, 255, 255, 0.2); color: #ffffff; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px;">Assignment Reminder</span>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #1f2937;">
+  <p style="margin: 0 0 12px 0;">Hi ${safeName} (${safeRoll}),</p>
+  <p style="margin: 0 0 12px 0;">
+    This is a quick reminder to complete the pending LeetCode practice question: <strong>${safeTitle}</strong>.
+  </p>
+  <p style="margin: 0 0 12px 0;">
+    Problem link: <a href="${safeUrl}">${safeUrl}</a>
+  </p>
+  <p style="margin: 0 0 12px 0;">
+    If you have already solved this question earlier, please resubmit your solution once on LeetCode using your registered account so your completion gets synced automatically.
+  </p>
+  <p style="margin: 0;">
+    Regards,<br/>
+    LeetCode Mentor Team
+  </p>
+</div>
+  `.trim();
 
-          <!-- Main Body Content -->
-          <tr>
-            <td style="padding: 32px;">
-              <p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5; color: #334155;">
-                Hello <strong>${studentName}</strong> <span style="color: #64748b;">(Roll No: ${rollNumber})</span>,
-              </p>
-              
-              <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #475569;">
-                This is a friendly reminder from your mentor that you have a <strong>pending LeetCode assignment</strong> that has not been submitted yet:
-              </p>
-
-              <!-- Problem Card Box -->
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #a40e19; border-radius: 8px; padding: 20px; margin-bottom: 28px;">
-                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 6px;">Assigned Problem</div>
-                <div style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">${displayTitle}</div>
-                <div style="font-size: 13px; color: #64748b;">Slug: <code>${titleSlug}</code></div>
-              </div>
-
-              <!-- Action Call to Action Button -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 24px;">
-                <tr>
-                  <td align="center">
-                    <a href="${problemUrl}" target="_blank" style="display: inline-block; background-color: #a40e19; color: #ffffff; font-weight: 600; font-size: 15px; text-decoration: none; padding: 14px 28px; border-radius: 8px; box-shadow: 0 2px 4px rgba(164, 14, 25, 0.25);">
-                      Solve on LeetCode &rarr;
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Note Box -->
-              <div style="background-color: #fdf2f2; border: 1px solid #fecdd3; border-radius: 8px; padding: 14px 16px; margin-bottom: 8px;">
-                <p style="margin: 0 0 6px 0; font-size: 13px; line-height: 1.5; color: #991b1b;">
-                  <strong>Note:</strong> If you have already done this question previously, kindly <strong>resubmit</strong> the solution on the LeetCode portal. The tracker will automatically detect your submission and mark your assignment as completed on the next synchronization.
-                </p>
-                <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #7f1d1d;">
-                  Please ensure you submit using your registered LeetCode account so your progress is tracked accurately.
-                </p>
-              </div>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 32px; text-align: center; font-size: 12px; color: #94a3b8;">
-              <p style="margin: 0 0 4px 0;">This is an automated notification from LeetCode Tracker.</p>
-              <p style="margin: 0;">Sent via ${senderEmail}</p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-  `;
+  const plainText = [
+    `Hi ${studentName} (${rollNumber}),`,
+    '',
+    `This is a quick reminder to complete the pending LeetCode practice question: ${displayTitle}.`,
+    '',
+    `Problem link: ${problemUrl}`,
+    '',
+    'If you have already solved this question earlier, please resubmit your solution once on LeetCode using your registered account so your completion gets synced automatically.',
+    '',
+    'Regards,',
+    'LeetCode Mentor Team',
+  ].join('\n');
 
   return transporter.sendMail({
-    from: `"LeetCode Tracker" <${senderEmail}>`,
+    from: `"LeetCode Mentor Team" <${senderEmail}>`,
     to,
     replyTo: senderEmail,
-    subject: `LeetCode Assignment: ${displayTitle}`,
-    text: `Hello ${studentName},\n\nYou have an assigned LeetCode problem: ${displayTitle}.\n\nPlease solve and submit your solution here:\n${problemUrl}\n\nNote: If you previously completed this question, please submit your solution again on LeetCode. The tracker will automatically record your completion on the next synchronization.\n\nBest regards,\nLeetCode Tracker`,
+    subject: `Reminder: ${displayTitle} (LeetCode Practice)`,
+    text: plainText,
     html: htmlContent,
   });
 }

@@ -18,6 +18,7 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -209,6 +210,28 @@ export default function AssignmentsPage() {
     setExpandedAssignmentId(id);
     resetExpandedFilters('pending');
     await loadAssignmentDetails(id);
+  };
+
+  const buildGmailComposeUrl = (assignment: any, student: any, targetEmail: string) => {
+    const displayTitle =
+      assignment.title ||
+      (assignment.titleSlug || '').replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
+    const problemUrl = `https://leetcode.com/problems/${assignment.titleSlug}/`;
+    const subject = `Reminder: ${displayTitle} (LeetCode Practice)`;
+    const body = [
+      `Hi ${student.name} (${student.rollNumber}),`,
+      '',
+      `This is a quick reminder to complete the pending LeetCode practice question: ${displayTitle}.`,
+      '',
+      `Problem link: ${problemUrl}`,
+      '',
+      'If you have already solved this question earlier, please resubmit your solution once on LeetCode using your registered account so your completion gets synced automatically.',
+      '',
+      'Regards,',
+      'LeetCode Mentor Team',
+    ].join('\n');
+
+    return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(targetEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   const handleSendIndividualReminder = async (assignmentId: string, sa: any) => {
@@ -1188,34 +1211,60 @@ export default function AssignmentsPage() {
                                                               </button>
                                                             </div>
                                                           ) : (
-                                                            <button
-                                                              type="button"
-                                                              disabled={isAnySending}
-                                                              onClick={() => handleSendIndividualReminder(a.id, sa)}
-                                                              className="btn btn-primary"
-                                                              style={{
-                                                                display: 'inline-flex',
-                                                                alignItems: 'center',
-                                                                gap: '5px',
-                                                                padding: '5px 11px',
-                                                                fontSize: '0.78rem',
-                                                                opacity: isAnySending && !isSendingThis ? 0.5 : 1,
-                                                                cursor: isAnySending ? 'not-allowed' : 'pointer',
-                                                              }}
-                                                              title={`Send reminder email to ${effectiveEmail}`}
-                                                            >
-                                                              {isSendingThis ? (
-                                                                <>
-                                                                  <RefreshCw size={12} className="animate-spin" />
-                                                                  <span>Sending...</span>
-                                                                </>
-                                                              ) : (
-                                                                <>
-                                                                  <Send size={12} />
-                                                                  <span>Send Mail</span>
-                                                                </>
-                                                              )}
-                                                            </button>
+                                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                              <button
+                                                                type="button"
+                                                                disabled={isAnySending}
+                                                                onClick={() => handleSendIndividualReminder(a.id, sa)}
+                                                                className="btn btn-primary"
+                                                                style={{
+                                                                  display: 'inline-flex',
+                                                                  alignItems: 'center',
+                                                                  gap: '5px',
+                                                                  padding: '5px 10px',
+                                                                  fontSize: '0.76rem',
+                                                                  opacity: isAnySending && !isSendingThis ? 0.5 : 1,
+                                                                  cursor: isAnySending ? 'not-allowed' : 'pointer',
+                                                                }}
+                                                                title={`Send reminder email via server to ${effectiveEmail}`}
+                                                              >
+                                                                {isSendingThis ? (
+                                                                  <>
+                                                                    <RefreshCw size={12} className="animate-spin" />
+                                                                    <span>Sending...</span>
+                                                                  </>
+                                                                ) : (
+                                                                  <>
+                                                                    <Send size={12} />
+                                                                    <span>Send Mail</span>
+                                                                  </>
+                                                                )}
+                                                              </button>
+                                                              <a
+                                                                href={buildGmailComposeUrl(a, student, effectiveEmail)}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                onClick={() => {
+                                                                  setSentReminders((prev) => ({
+                                                                    ...prev,
+                                                                    [`${a.id}:${student.id}`]: true,
+                                                                  }));
+                                                                }}
+                                                                className="btn btn-outline"
+                                                                style={{
+                                                                  display: 'inline-flex',
+                                                                  alignItems: 'center',
+                                                                  gap: '4px',
+                                                                  padding: '5px 8px',
+                                                                  fontSize: '0.74rem',
+                                                                  textDecoration: 'none',
+                                                                }}
+                                                                title={`Open pre-filled email in Gmail for ${effectiveEmail} (never blocked by SMTP spam filter)`}
+                                                              >
+                                                                <ExternalLink size={12} />
+                                                                <span>Gmail</span>
+                                                              </a>
+                                                            </div>
                                                           )}
                                                         </td>
                                                       </tr>
