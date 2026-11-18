@@ -33,10 +33,11 @@ model Student {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  assignedUserId String?
-  assignedUser   User?               @relation(fields: [assignedUserId], references: [id])
-  assignments    StudentAssignment[]
-  submissions    Submission[]
+  assignedUserId   String?
+  assignedUser     User?               @relation(fields: [assignedUserId], references: [id])
+  assignments      StudentAssignment[]
+  submissions      Submission[]
+  portalCredential StudentCredential?
 }
 
 model User {
@@ -91,4 +92,22 @@ model Submission {
 
   // Prevent storing duplicate submissions for the same student
   @@unique([studentId, titleSlug, timestamp])
+}
+
+model StudentCredential {
+  id             String   @id @default(uuid())
+  portalUsername String   @unique
+  enrollmentNo   String
+  passwordHash   String
+  studentName    String?
+  stream         String?
+  semester       String?
+  section        String?
+  labBatch       String?
+  studentId      String?  @unique
+  student        Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([enrollmentNo])
 }

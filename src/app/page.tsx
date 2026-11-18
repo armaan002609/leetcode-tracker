@@ -7,7 +7,7 @@ import {
   AlertTriangle, RotateCw, Download, Search, AlertCircle,
   Menu, User, Grid, Home, ArrowLeft, Target, Activity, Award, UploadCloud, RefreshCw, Trash2, X, LogIn, LogOut, Database,
   Users, Flame, TrendingUp, Sparkles, Building2,
-  ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, RotateCcw, Mail
+  ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, RotateCcw, Mail, KeyRound
 } from "lucide-react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
@@ -71,8 +71,10 @@ export default function Dashboard() {
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
+    } else if (status === "authenticated" && (session?.user as any)?.role === "student") {
+      router.replace("/student");
     }
-  }, [status, router]);
+  }, [status, session, router]);
 
   const fetchStudents = async () => {
     try {
@@ -89,7 +91,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (status === "authenticated") {
+    if (status === "authenticated" && (session?.user as any)?.role !== "student") {
       fetchStudents();
       if (isAdmin) {
         fetch('/api/users').then(async r => {
@@ -97,7 +99,7 @@ export default function Dashboard() {
         });
       }
     }
-  }, [status, isAdmin]);
+  }, [status, session, isAdmin]);
 
   const scrapeQueue = async (rollNumbersToScrape: string[]) => {
     if (rollNumbersToScrape.length === 0) return;
@@ -500,6 +502,12 @@ export default function Dashboard() {
                         </Link>
                         <Link href="/admin/emails" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
                           <Mail size={16} /> Upload Student Emails
+                        </Link>
+                        <Link href="/admin/student-portal" style={{ padding: '10px 16px', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', color: 'var(--foreground)' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--surface-hover)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+                            <KeyRound size={16} /> Student Portal Access
+                          </span>
+                          <Lock size={13} style={{ color: 'var(--primary)', opacity: 0.85 }} />
                         </Link>
                         <div style={{ height: '1px', background: 'var(--surface-border)', margin: '4px 0' }}></div>
                       </>

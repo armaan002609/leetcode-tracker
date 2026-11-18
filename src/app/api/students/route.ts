@@ -18,6 +18,10 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if ((session.user as any).role === 'student') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const isAdmin = (session.user as any).role === 'admin';
     const userId = (session.user as any).id;
 

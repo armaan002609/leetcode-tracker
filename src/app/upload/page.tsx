@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { parseCsv } from "@/lib/validation/parseCsv";
 import { parseXlsx } from "@/lib/validation/parseXlsx";
 import { StudentRow } from "@/lib/validation/rowSchema";
@@ -11,6 +12,15 @@ import Link from "next/link";
 
 export default function UploadPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.replace("/login");
+    } else if (status === "authenticated" && (session?.user as any)?.role !== "admin") {
+      router.replace((session?.user as any)?.role === "student" ? "/student" : "/");
+    }
+  }, [status, session, router]);
   
   const [activeTab, setActiveTab] = useState<"bulk" | "manual">("bulk");
   const [rows, setRows] = useState<Omit<StudentRow, "id">[]>([]);

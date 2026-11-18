@@ -37,15 +37,17 @@ export default function AnalyticsPage() {
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
+    } else if (status === "authenticated" && (session?.user as any)?.role === "student") {
+      router.replace("/student");
     }
-  }, [status, router]);
+  }, [status, session, router]);
 
   useEffect(() => {
-    if (status === "authenticated") {
+    if (status === "authenticated" && (session?.user as any)?.role !== "student") {
       fetch('/api/students')
         .then(res => res.json())
         .then(data => {
-          setRows(data);
+          setRows(Array.isArray(data) ? data : []);
           setIsReady(true);
         })
         .catch(e => {
@@ -53,7 +55,7 @@ export default function AnalyticsPage() {
           setIsReady(true);
         });
     }
-  }, [status]);
+  }, [status, session]);
 
   // Overall KPIs
   const totalEnrolled = rows.length;
