@@ -7,6 +7,16 @@ import { isAssignmentMatch } from '@/lib/scraping/titleNormalizer';
 
 export const dynamic = 'force-dynamic';
 
+function formatEmailError(errorMsg: string): string {
+  if (errorMsg.includes('550-5.4.5') || errorMsg.toLowerCase().includes('daily user sending limit exceeded')) {
+    return 'Gmail Daily Limit Reached (Error 550-5.4.5): Google has temporarily paused sending from this account. Please try again later or update EMAIL_USER / EMAIL_PASS in .env.';
+  }
+  if (errorMsg.includes('69585') || errorMsg.toLowerCase().includes('message blocked')) {
+    return 'Message was blocked by the email provider. Waiting briefly between individual sends helps prevent blocks.';
+  }
+  return errorMsg;
+}
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -25,183 +35,168 @@ export async function POST(
 
     const { id } = await params;
 
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      body = {};
+    }
+
+    const defaultDomain =
+      typeof body.defaultDomain === 'string'
+        ? body.defaultDomain.trim().replace(/^@/, '')
+        : '';
+
     const assignment = await prisma.assignment.findUnique({
       where: { id },
-      include: {
-        studentAssignments: {
-          where: { status: 'pending' },
-          include: {
-            student: {
-              select: {
-                id: true,
-                rollNumber: true,
-                name: true,
-                email: true,
-                branch: true,
-                section: true,
-              }
-            }
-          }
-        }
-      }
+      select: {
+        id: true,
+        title: true,
+        titleSlug: true,
+      },
     });
 
     if (!assignment) {
       return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
     }
 
-    let defaultDomain = '';
-    let body: any = {};
-    try {
-      body = await req.json();
-      if (body && typeof body.defaultDomain === 'string') {
-        defaultDomain = body.defaultDomain.trim().replace(/^@/, '');
-      }
-    } catch (e) {
-      // Body is optional
-    }
-
-    // Direct test email support
+    // Optional direct test email support
     if (body.testEmail && typeof body.testEmail === 'string' && body.testEmail.includes('@')) {
-      await sendAssignmentReminder({
-        to: body.testEmail.trim(),
-        studentName: (session.user as any)?.name || 'Admin (Test)',
-        rollNumber: 'DEMO',
-        assignmentTitle: assignment.title || assignment.titleSlug,
-        titleSlug: assignment.titleSlug,
-      });
-      return NextResponse.json({
-        success: true,
-        isTest: true,
-        assignmentTitle: assignment.title || assignment.titleSlug,
-        message: `Test preview email successfully sent to ${body.testEmail.trim()}!`,
-        totalPending: 1,
-        sent: 1,
-        skippedNoEmail: 0,
-        failed: 0,
-      });
-    }
-
-    const filterBranch = typeof body.filterBranch === 'string' ? body.filterBranch.trim() : '';
-    const filterSection = typeof body.filterSection === 'string' ? body.filterSection.trim() : '';
-
-    const rawPendingList = assignment.studentAssignments.filter(item => {
-      const student = item.student as any;
-      if (filterBranch && filterBranch.toLowerCase() !== 'all') {
-        if (!student.branch || student.branch.trim().toLowerCase() !== filterBranch.toLowerCase()) {
-          return false;
-        }
-      }
-      if (filterSection && filterSection.toLowerCase() !== 'all') {
-        if (!student.section || student.section.trim().toLowerCase() !== filterSection.toLowerCase()) {
-          return false;
-        }
-      }
-      return true;
-    });
-
-    // Reconcile against submissions so students who solved it aren't emailed
-    const studentIds = Array.from(new Set(rawPendingList.map(item => item.student.id)));
-    const submissions = studentIds.length > 0 ? await prisma.submission.findMany({
-      where: { studentId: { in: studentIds } },
-      select: { studentId: true, title: true, titleSlug: true, timestamp: true }
-    }) : [];
-
-    const subsByStudent = new Map<string, typeof submissions>();
-    for (const sub of submissions) {
-      const list = subsByStudent.get(sub.studentId) || [];
-      list.push(sub);
-      subsByStudent.set(sub.studentId, list);
-    }
-
-    const pendingList: typeof rawPendingList = [];
-    for (const item of rawPendingList) {
-      const studentSubs = subsByStudent.get(item.student.id) || [];
-      const match = studentSubs.find(s => isAssignmentMatch(assignment, s));
-      if (match) {
-        prisma.studentAssignment.update({
-          where: { id: item.id },
-          data: { status: 'completed', completedAt: match.timestamp }
-        }).catch(err => console.error('Error updating assignment in notify:', err));
-      } else {
-        pendingList.push(item);
-      }
-    }
-
-    if (pendingList.length === 0) {
-      return NextResponse.json({
-        message: 'No pending students found matching the selected branch/section filter.',
-        totalPending: 0,
-        sent: 0,
-        skippedNoEmail: 0,
-        failed: 0,
-      });
-    }
-
-    let sent = 0;
-    let failed = 0;
-    const skippedNoEmail: Array<{ rollNumber: string; name: string }> = [];
-    const errors: Array<{ rollNumber: string; error: string }> = [];
-
-    const startTime = Date.now();
-    const MAX_DURATION_MS = 8500; // 8.5 seconds limit to stay well within Vercel timeout
-
-    // Separate students with valid emails vs missing emails
-    const recipients: Array<{ student: typeof pendingList[0]['student']; targetEmail: string }> = [];
-
-    for (const item of pendingList) {
-      const student = item.student;
-      const targetEmail = student.email || (defaultDomain ? `${student.rollNumber}@${defaultDomain}` : null);
-
-      if (!targetEmail || !targetEmail.includes('@')) {
-        skippedNoEmail.push({ rollNumber: student.rollNumber, name: student.name });
-      } else {
-        recipients.push({ student, targetEmail });
-      }
-    }
-
-    const offset = typeof body.offset === 'number' ? Math.max(0, body.offset) : 0;
-    const limit = typeof body.limit === 'number' ? Math.min(50, Math.max(1, body.limit)) : 15;
-
-    // Slice for this specific chunk
-    const currentSlice = recipients.slice(offset, offset + limit);
-
-    for (const { student, targetEmail } of currentSlice) {
       try {
         await sendAssignmentReminder({
-          to: targetEmail,
-          studentName: student.name,
-          rollNumber: student.rollNumber,
+          to: body.testEmail.trim(),
+          studentName: (session.user as any)?.name || 'Admin (Test)',
+          rollNumber: 'DEMO',
           assignmentTitle: assignment.title || assignment.titleSlug,
           titleSlug: assignment.titleSlug,
         });
-        sent++;
+        return NextResponse.json({
+          success: true,
+          isTest: true,
+          assignmentTitle: assignment.title || assignment.titleSlug,
+          message: `Test preview email successfully sent to ${body.testEmail.trim()}!`,
+        });
       } catch (err: any) {
-        failed++;
-        errors.push({ rollNumber: student.rollNumber, error: err.message || 'Failed to send email' });
-        console.error(`Failed to send reminder email to ${student.rollNumber} (${targetEmail}):`, err);
+        return NextResponse.json(
+          { error: formatEmailError(err.message || 'Failed to send test email') },
+          { status: 500 }
+        );
       }
     }
 
-    const nextOffset = offset + currentSlice.length;
-    const hasMore = nextOffset < recipients.length;
+    // Strictly enforce single individual student sending to prevent mail blocking
+    const studentId = typeof body.studentId === 'string' ? body.studentId.trim() : '';
+    if (!studentId) {
+      return NextResponse.json(
+        { error: 'Please select an individual student to send a reminder email. Bulk sending is disabled to protect your email account from getting blocked.' },
+        { status: 400 }
+      );
+    }
+
+    const studentAssignment = await prisma.studentAssignment.findFirst({
+      where: {
+        assignmentId: id,
+        studentId,
+      },
+      include: {
+        student: {
+          select: {
+            id: true,
+            rollNumber: true,
+            name: true,
+            email: true,
+            branch: true,
+            semester: true,
+            section: true,
+          },
+        },
+      },
+    });
+
+    if (!studentAssignment) {
+      return NextResponse.json(
+        { error: 'Student is not assigned to this question.' },
+        { status: 404 }
+      );
+    }
+
+    const student = studentAssignment.student;
+
+    if (studentAssignment.status === 'completed') {
+      return NextResponse.json({
+        success: false,
+        alreadyCompleted: true,
+        completedAt: studentAssignment.completedAt,
+        studentId: student.id,
+        message: `${student.name} (${student.rollNumber}) has already completed this question.`,
+      });
+    }
+
+    // Reconcile against stored submissions so we don't email someone who already solved it
+    const studentSubmissions = await prisma.submission.findMany({
+      where: { studentId: student.id },
+      select: { title: true, titleSlug: true, timestamp: true },
+    });
+
+    const match = studentSubmissions.find(sub => isAssignmentMatch(assignment, sub));
+    if (match) {
+      await prisma.studentAssignment.update({
+        where: { id: studentAssignment.id },
+        data: { status: 'completed', completedAt: match.timestamp },
+      });
+
+      return NextResponse.json({
+        success: false,
+        alreadyCompleted: true,
+        completedAt: match.timestamp,
+        studentId: student.id,
+        message: `${student.name} (${student.rollNumber}) has already solved this question. Status updated to Done.`,
+      });
+    }
+
+    const targetEmail =
+      (student.email && student.email.trim()) ||
+      (defaultDomain ? `${student.rollNumber}@${defaultDomain}` : '');
+
+    if (!targetEmail || !targetEmail.includes('@')) {
+      return NextResponse.json(
+        {
+          error: `No email address found for ${student.name} (${student.rollNumber}). Please add their email on the Student Emails page or enter a college domain fallback.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    try {
+      await sendAssignmentReminder({
+        to: targetEmail,
+        studentName: student.name,
+        rollNumber: student.rollNumber,
+        assignmentTitle: assignment.title || assignment.titleSlug,
+        titleSlug: assignment.titleSlug,
+      });
+    } catch (err: any) {
+      console.error(`Failed to send reminder email to ${student.rollNumber} (${targetEmail}):`, err);
+      return NextResponse.json(
+        { error: formatEmailError(err.message || 'Failed to send email') },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
+      studentId: student.id,
+      studentName: student.name,
+      rollNumber: student.rollNumber,
+      email: targetEmail,
       assignmentTitle: assignment.title || assignment.titleSlug,
-      totalPending: pendingList.length,
-      totalRecipients: recipients.length,
-      skippedNoEmail: skippedNoEmail.length,
-      chunkSent: sent,
-      chunkFailed: failed,
-      offset,
-      nextOffset,
-      hasMore,
-      skippedList: skippedNoEmail.slice(0, 20),
-      errors: errors.slice(0, 10),
+      message: `Reminder email sent to ${student.name} (${targetEmail}).`,
     });
   } catch (error: any) {
-    console.error('Error sending assignment notifications:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    console.error('Error sending individual assignment notification:', error);
+    return NextResponse.json(
+      { error: formatEmailError(error.message || 'Internal Server Error') },
+      { status: 500 }
+    );
   }
 }

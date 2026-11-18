@@ -1,7 +1,24 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Plus, BookOpen, Trash2, Users, Download, Edit2, X, Mail, Send, CheckCircle2, AlertTriangle, AlertCircle, Search, CheckSquare, Square, Filter, RefreshCw } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  ArrowLeft,
+  Plus,
+  BookOpen,
+  Trash2,
+  Download,
+  Edit2,
+  X,
+  Mail,
+  Send,
+  CheckCircle2,
+  AlertCircle,
+  Search,
+  Filter,
+  RefreshCw,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -9,11 +26,11 @@ import { useRouter } from "next/navigation";
 export default function AssignmentsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  
+
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
-  
+
   const [newUrl, setNewUrl] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [targetBranch, setTargetBranch] = useState("");
@@ -31,38 +48,37 @@ export default function AssignmentsPage() {
   const [editTargetSection, setEditTargetSection] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Email Notification & Multi-Selection States
-  const [selectedAssignmentIds, setSelectedAssignmentIds] = useState<string[]>([]);
+  // Assignment list filters
   const [searchQuery, setSearchQuery] = useState("");
   const [completionFilter, setCompletionFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [assignmentBranchFilter, setAssignmentBranchFilter] = useState("all");
+
+  // Opened question filters (Branch, Semester, Section, Status, Search)
   const [expandedStatusFilter, setExpandedStatusFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [expandedBranchFilter, setExpandedBranchFilter] = useState("all");
+  const [expandedSemesterFilter, setExpandedSemesterFilter] = useState("all");
   const [expandedSectionFilter, setExpandedSectionFilter] = useState("all");
-  const [targetAssignmentIds, setTargetAssignmentIds] = useState<string[]>([]);
-  const [bulkModalOpen, setBulkModalOpen] = useState(false);
-  const [loadingBulkPreview, setLoadingBulkPreview] = useState(false);
-  const [bulkPreviewData, setBulkPreviewData] = useState<any>(null);
-  const [notifyTargetBranch, setNotifyTargetBranch] = useState("");
-  const [notifyTargetSection, setNotifyTargetSection] = useState("");
-  const [recipientMode, setRecipientMode] = useState<'bcc' | 'cc'>('bcc');
-  const [maxStudentsLimit, setMaxStudentsLimit] = useState<number>(80);
-  const [studentBatchOffset, setStudentBatchOffset] = useState<number>(0);
-  const [questionsPerEmail, setQuestionsPerEmail] = useState<number>(20);
-  const [isSendingNotifications, setIsSendingNotifications] = useState(false);
-  const [notificationResult, setNotificationResult] = useState<any>(null);
+  const [expandedStudentSearch, setExpandedStudentSearch] = useState("");
   const [defaultDomain, setDefaultDomain] = useState("");
-  const [notifyError, setNotifyError] = useState("");
-  const [testEmailInput, setTestEmailInput] = useState("armaan002609@gmail.com");
-  const [isSendingTest, setIsSendingTest] = useState(false);
-  const [testSuccessMessage, setTestSuccessMessage] = useState("");
+  const [showDomainFallback, setShowDomainFallback] = useState(false);
+
+  // Individual email sending state (strictly 1 student at a time)
+  const [sendingStudentId, setSendingStudentId] = useState<string | null>(null);
+  const [sentReminders, setSentReminders] = useState<Record<string, boolean>>({});
+  const [individualMailFeedback, setIndividualMailFeedback] = useState<{
+    type: 'success' | 'error' | 'info';
+    message: string;
+  } | null>(null);
 
   const [availableBranches, setAvailableBranches] = useState<string[]>([]);
-  const [availableSections, setAvailableSections] = useState<string[]>([]);
 
   const [lookupRollNumber, setLookupRollNumber] = useState("");
   const [lookupStudent, setLookupStudent] = useState<any>(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState("");
+
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [reconcileMessage, setReconcileMessage] = useState("");
 
   const handleLookupStudent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +93,7 @@ export default function AssignmentsPage() {
       } else {
         setLookupError("Student not found");
       }
-    } catch (e) {
+    } catch {
       setLookupError("Error fetching student");
     } finally {
       setLookupLoading(false);
@@ -92,7 +108,6 @@ export default function AssignmentsPage() {
     } else if (status === "authenticated") {
       fetchAssignments();
       fetchBranches();
-      fetchSections();
     }
   }, [status, router, session]);
 
@@ -101,18 +116,6 @@ export default function AssignmentsPage() {
       const res = await fetch("/api/admin/branches");
       if (res.ok) {
         setAvailableBranches(await res.json());
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchSections = async (branch?: string) => {
-    try {
-      const url = branch && branch !== 'all' ? `/api/admin/sections?branch=${encodeURIComponent(branch)}` : '/api/admin/sections';
-      const res = await fetch(url);
-      if (res.ok) {
-        setAvailableSections(await res.json());
       }
     } catch (e) {
       console.error(e);
@@ -137,9 +140,6 @@ export default function AssignmentsPage() {
     }
   };
 
-  const [isReconciling, setIsReconciling] = useState(false);
-  const [reconcileMessage, setReconcileMessage] = useState("");
-
   const handleReconcile = async () => {
     try {
       setIsReconciling(true);
@@ -149,6 +149,9 @@ export default function AssignmentsPage() {
       if (res.ok) {
         setReconcileMessage(data.message || `Reconciliation complete. Updated ${data.reconciled || 0} assignments.`);
         await fetchAssignments();
+        if (expandedAssignmentId) {
+          await loadAssignmentDetails(expandedAssignmentId);
+        }
         setTimeout(() => setReconcileMessage(""), 6000);
       } else {
         alert(data.error || "Failed to reconcile assignments");
@@ -160,14 +163,16 @@ export default function AssignmentsPage() {
     }
   };
 
-  const handleToggleExpand = async (id: string) => {
-    if (expandedAssignmentId === id) {
-      setExpandedAssignmentId(null);
-      setAssignmentDetails(null);
-      return;
-    }
-    
-    setExpandedAssignmentId(id);
+  const resetExpandedFilters = (initialStatus: 'all' | 'pending' | 'completed' = 'all') => {
+    setExpandedStatusFilter(initialStatus);
+    setExpandedBranchFilter("all");
+    setExpandedSemesterFilter("all");
+    setExpandedSectionFilter("all");
+    setExpandedStudentSearch("");
+    setIndividualMailFeedback(null);
+  };
+
+  const loadAssignmentDetails = async (id: string) => {
     setLoadingDetails(true);
     setAssignmentDetails(null);
     try {
@@ -182,18 +187,115 @@ export default function AssignmentsPage() {
     }
   };
 
+  const handleToggleExpand = async (id: string) => {
+    if (expandedAssignmentId === id) {
+      setExpandedAssignmentId(null);
+      setAssignmentDetails(null);
+      setIndividualMailFeedback(null);
+      return;
+    }
+
+    setExpandedAssignmentId(id);
+    resetExpandedFilters('all');
+    await loadAssignmentDetails(id);
+  };
+
+  const handleOpenForEmail = async (id: string) => {
+    if (expandedAssignmentId === id) {
+      setExpandedStatusFilter('pending');
+      return;
+    }
+
+    setExpandedAssignmentId(id);
+    resetExpandedFilters('pending');
+    await loadAssignmentDetails(id);
+  };
+
+  const handleSendIndividualReminder = async (assignmentId: string, sa: any) => {
+    if (sendingStudentId) return; // Enforce sending to strictly 1 individual at a time
+
+    const student = sa.student;
+    setSendingStudentId(student.id);
+    setIndividualMailFeedback(null);
+
+    try {
+      const res = await fetch(`/api/admin/assignments/${assignmentId}/notify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentId: student.id,
+          defaultDomain: defaultDomain.trim(),
+        }),
+      });
+      const data = await res.json();
+
+      if (data.alreadyCompleted) {
+        setAssignmentDetails((prev: any) => {
+          if (!prev || prev.id !== assignmentId) return prev;
+          return {
+            ...prev,
+            studentAssignments: prev.studentAssignments.map((item: any) =>
+              item.student.id === student.id
+                ? { ...item, status: 'completed', completedAt: data.completedAt || new Date().toISOString() }
+                : item
+            ),
+          };
+        });
+        setAssignments((prev) =>
+          prev.map((a) =>
+            a.id === assignmentId
+              ? { ...a, completedCount: Math.min(a.totalAssigned, (a.completedCount || 0) + 1) }
+              : a
+          )
+        );
+        setIndividualMailFeedback({
+          type: 'info',
+          message: data.message || `${student.name} has already solved this question. Marked as Done.`,
+        });
+        return;
+      }
+
+      if (!res.ok) {
+        setIndividualMailFeedback({
+          type: 'error',
+          message: data.error || `Failed to send reminder email to ${student.name}.`,
+        });
+        return;
+      }
+
+      setSentReminders((prev) => ({
+        ...prev,
+        [`${assignmentId}:${student.id}`]: true,
+      }));
+      setIndividualMailFeedback({
+        type: 'success',
+        message: data.message || `Reminder email sent to ${student.name} (${data.email}).`,
+      });
+    } catch (err: any) {
+      setIndividualMailFeedback({
+        type: 'error',
+        message: err.message || "Network error while sending reminder email.",
+      });
+    } finally {
+      setSendingStudentId(null);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure you want to delete this assignment?")) return;
     try {
       const res = await fetch(`/api/admin/assignments/${id}`, { method: 'DELETE' });
       if (res.ok) {
         fetchAssignments();
-        if (expandedAssignmentId === id) setExpandedAssignmentId(null);
+        if (expandedAssignmentId === id) {
+          setExpandedAssignmentId(null);
+          setAssignmentDetails(null);
+        }
       } else {
         const data = await res.json();
         alert(data.error || "Failed to delete");
       }
-    } catch(e) {
+    } catch (e) {
       console.error(e);
     }
   };
@@ -221,13 +323,17 @@ export default function AssignmentsPage() {
         })
       });
       if (res.ok) {
+        const updatedId = editingAssignment.id;
         setEditingAssignment(null);
-        fetchAssignments();
+        await fetchAssignments();
+        if (expandedAssignmentId === updatedId) {
+          await loadAssignmentDetails(updatedId);
+        }
       } else {
         const data = await res.json();
         alert(data.error || "Failed to update");
       }
-    } catch(e) {
+    } catch (e) {
       console.error(e);
     } finally {
       setIsUpdating(false);
@@ -238,8 +344,8 @@ export default function AssignmentsPage() {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const matchesSearch = (a.title && a.title.toLowerCase().includes(q)) ||
-             (a.titleSlug && a.titleSlug.toLowerCase().includes(q)) ||
-             (a.targetBranch && a.targetBranch.toLowerCase().includes(q));
+        (a.titleSlug && a.titleSlug.toLowerCase().includes(q)) ||
+        (a.targetBranch && a.targetBranch.toLowerCase().includes(q));
       if (!matchesSearch) return false;
     }
     if (assignmentBranchFilter !== 'all') {
@@ -256,172 +362,6 @@ export default function AssignmentsPage() {
     return true;
   });
 
-  const toggleSelectAssignment = (id: string) => {
-    setSelectedAssignmentIds(prev => 
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
-
-  const toggleSelectAll = () => {
-    const visibleIds = filteredAssignments.map(a => a.id);
-    const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedAssignmentIds.includes(id));
-    if (allSelected) {
-      setSelectedAssignmentIds(prev => prev.filter(id => !visibleIds.includes(id)));
-    } else {
-      setSelectedAssignmentIds(prev => Array.from(new Set([...prev, ...visibleIds])));
-    }
-  };
-
-  const handleOpenBulkModal = async (ids: string[], initialBranch = "", initialSection = "") => {
-    if (ids.length === 0) return;
-    setTargetAssignmentIds(ids);
-    setNotifyTargetBranch(initialBranch || "");
-    setNotifyTargetSection(initialSection || "");
-    setBulkModalOpen(true);
-    setBulkPreviewData(null);
-    setNotificationResult(null);
-    setNotifyError("");
-    setTestSuccessMessage("");
-    setLoadingBulkPreview(true);
-
-    try {
-      const res = await fetch("/api/admin/assignments/bulk-notify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assignmentIds: ids,
-          defaultDomain: defaultDomain.trim(),
-          filterBranch: initialBranch || "",
-          filterSection: initialSection || "",
-          questionsPerEmail,
-          maxStudents: maxStudentsLimit || undefined,
-          studentOffset: 0,
-          previewOnly: true,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setBulkPreviewData(data);
-      } else {
-        const err = await res.json().catch(() => null);
-        setNotifyError(err?.error || "Failed to load preview data.");
-      }
-    } catch (err: any) {
-      console.error("Failed to load preview:", err);
-      setNotifyError(err.message || "Failed to load preview data.");
-    } finally {
-      setLoadingBulkPreview(false);
-    }
-  };
-
-  const refreshBulkPreview = async (
-    branchToUse = notifyTargetBranch, 
-    sectionToUse = notifyTargetSection, 
-    domainToUse = defaultDomain,
-    qPerEmail = questionsPerEmail,
-    maxStudents = maxStudentsLimit,
-    offset = studentBatchOffset
-  ) => {
-    if (targetAssignmentIds.length === 0) return;
-    setLoadingBulkPreview(true);
-    try {
-      const res = await fetch("/api/admin/assignments/bulk-notify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assignmentIds: targetAssignmentIds,
-          defaultDomain: domainToUse.trim(),
-          filterBranch: branchToUse,
-          filterSection: sectionToUse,
-          questionsPerEmail: qPerEmail,
-          maxStudents: maxStudents || undefined,
-          studentOffset: offset || 0,
-          previewOnly: true,
-        }),
-      });
-      if (res.ok) {
-        setBulkPreviewData(await res.json());
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingBulkPreview(false);
-    }
-  };
-
-  const handleCloseNotifyModal = () => {
-    setBulkModalOpen(false);
-    setTargetAssignmentIds([]);
-    setNotifyTargetBranch("");
-    setNotifyTargetSection("");
-    setBulkPreviewData(null);
-    setNotificationResult(null);
-    setNotifyError("");
-    setTestSuccessMessage("");
-    setIsSendingNotifications(false);
-  };
-
-  const handleSendBulkNotifications = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (targetAssignmentIds.length === 0) return;
-    setIsSendingNotifications(true);
-    setNotifyError("");
-    setNotificationResult(null);
-
-    try {
-      const res = await fetch("/api/admin/assignments/bulk-notify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assignmentIds: targetAssignmentIds,
-          defaultDomain: defaultDomain.trim(),
-          recipientMode,
-          filterBranch: notifyTargetBranch,
-          filterSection: notifyTargetSection,
-          questionsPerEmail,
-          maxStudents: maxStudentsLimit || undefined,
-          studentOffset: studentBatchOffset || 0,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to send notifications.");
-      }
-      setNotificationResult(data);
-    } catch (err: any) {
-      setNotifyError(err.message || "Network error sending notifications.");
-    } finally {
-      setIsSendingNotifications(false);
-    }
-  };
-
-  const handleSendTestEmail = async () => {
-    if (targetAssignmentIds.length === 0 || !testEmailInput) return;
-    setIsSendingTest(true);
-    setNotifyError("");
-    setTestSuccessMessage("");
-    try {
-      const res = await fetch("/api/admin/assignments/bulk-notify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          assignmentIds: targetAssignmentIds,
-          testEmail: testEmailInput.trim(),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setNotifyError(data.error || "Failed to send test email.");
-      } else {
-        setTestSuccessMessage(data.message || `Test email successfully sent to ${testEmailInput}! Check your inbox.`);
-      }
-    } catch (e: any) {
-      setNotifyError(e.message || "Failed to send test email.");
-    } finally {
-      setIsSendingTest(false);
-    }
-  };
-
   const handleCreateAssignment = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsCreating(true);
@@ -429,14 +369,14 @@ export default function AssignmentsPage() {
       const res = await fetch("/api/admin/assignments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           url: newUrl,
           title: newTitle,
           targetBranch: targetBranch || null,
           targetSection: targetSection || null
         })
       });
-      
+
       if (res.ok) {
         setNewUrl("");
         setNewTitle("");
@@ -464,11 +404,13 @@ export default function AssignmentsPage() {
     );
   }
 
+  const normalizedFallbackDomain = defaultDomain.trim().replace(/^@/, '');
+
   return (
     <div className="dashboard-layout">
       <nav className="topnav">
         <div className="topnav-brand">
-          <Link href="/" className="icon-btn" style={{background: 'transparent', textDecoration: 'none', color: 'inherit'}} title="Back to Dashboard">
+          <Link href="/" className="icon-btn" style={{ background: 'transparent', textDecoration: 'none', color: 'inherit' }} title="Back to Dashboard">
             <ArrowLeft size={20} />
           </Link>
           <div className="topnav-brand-icon">L</div>
@@ -497,451 +439,812 @@ export default function AssignmentsPage() {
           </div>
           <div className="profile-info">
             <h2>Manage Assignments</h2>
-            <div style={{opacity: 0.9, fontSize: '0.9rem', marginTop: 4, maxWidth: '280px', lineHeight: 1.4}}>
-              Assign LeetCode questions to students and track progress
+            <div style={{ opacity: 0.9, fontSize: '0.9rem', marginTop: 4, maxWidth: '380px', lineHeight: 1.4 }}>
+              Assign LeetCode questions, open any question to filter by Branch / Semester / Section, and send reminder emails individually.
             </div>
           </div>
         </div>
 
         <div style={{ padding: '24px' }}>
           <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            
+
             <div style={{ flex: '1 1 600px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            
-            {/* Create Assignment Form */}
-            <div className="dashboard-card" style={{ margin: 0, width: '100%' }}>
-              <div className="card-header">
-                <h3 className="card-title">Assign Question</h3>
+
+              {/* Create Assignment Form */}
+              <div className="dashboard-card" style={{ margin: 0, width: '100%' }}>
+                <div className="card-header">
+                  <h3 className="card-title">Assign Question</h3>
+                </div>
+                <form onSubmit={handleCreateAssignment} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>LeetCode URL</label>
+                    <input
+                      type="url"
+                      value={newUrl}
+                      onChange={(e) => setNewUrl(e.target.value)}
+                      placeholder="https://leetcode.com/problems/two-sum/"
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Custom Title (Optional)</label>
+                    <input
+                      type="text"
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      placeholder="Two Sum"
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '16px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Target Branch (Optional)</label>
+                      <select
+                        value={targetBranch}
+                        onChange={(e) => setTargetBranch(e.target.value)}
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', backgroundColor: 'var(--background)' }}
+                      >
+                        <option value="">All Branches</option>
+                        {availableBranches.map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Target Section (Optional)</label>
+                      <input
+                        type="text"
+                        value={targetSection}
+                        onChange={(e) => setTargetSection(e.target.value)}
+                        placeholder="e.g. A"
+                        style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                      />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={isCreating} className="btn btn-primary" style={{ marginTop: '8px' }}>
+                    <Plus size={16} /> {isCreating ? "Assigning..." : "Assign Question"}
+                  </button>
+                </form>
               </div>
-              <form onSubmit={handleCreateAssignment} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>LeetCode URL</label>
-                  <input 
-                    type="url" 
-                    value={newUrl}
-                    onChange={(e) => setNewUrl(e.target.value)}
-                    placeholder="https://leetcode.com/problems/two-sum/"
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Custom Title (Optional)</label>
-                  <input 
-                    type="text" 
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="Two Sum"
-                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
-                  />
-                </div>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Target Branch (Optional)</label>
-                    <select 
-                      value={targetBranch}
-                      onChange={(e) => setTargetBranch(e.target.value)}
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', backgroundColor: 'var(--background)' }}
+
+              {/* Assignments List */}
+              <div className="dashboard-card" style={{ margin: 0 }}>
+                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    <h3 className="card-title" style={{ margin: 0 }}>All Assignments ({assignments.length})</h3>
+                    <div style={{ position: 'relative' }}>
+                      <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+                      <input
+                        type="text"
+                        placeholder="Search questions..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        style={{ padding: '6px 10px 6px 30px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.82rem', width: '160px' }}
+                      />
+                    </div>
+                    <select
+                      value={completionFilter}
+                      onChange={e => setCompletionFilter(e.target.value as any)}
+                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.82rem', background: 'white', color: 'var(--foreground)', cursor: 'pointer' }}
                     >
-                      <option value="">All Branches</option>
+                      <option value="all">All Statuses ({assignments.length})</option>
+                      <option value="pending">Pending ({assignments.filter(a => a.completedCount < a.totalAssigned).length})</option>
+                      <option value="completed">Completed ({assignments.filter(a => a.totalAssigned > 0 && a.completedCount === a.totalAssigned).length})</option>
+                    </select>
+                    <select
+                      value={assignmentBranchFilter}
+                      onChange={e => setAssignmentBranchFilter(e.target.value)}
+                      style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.82rem', background: 'white', color: 'var(--foreground)', cursor: 'pointer' }}
+                    >
+                      <option value="all">All Branches</option>
                       {availableBranches.map(b => (
                         <option key={b} value={b}>{b}</option>
                       ))}
                     </select>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Target Section (Optional)</label>
-                    <input 
-                      type="text" 
-                      value={targetSection}
-                      onChange={(e) => setTargetSection(e.target.value)}
-                      placeholder="e.g. A"
-                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
-                    />
-                  </div>
-                </div>
-                <button type="submit" disabled={isCreating} className="btn btn-primary" style={{ marginTop: '8px' }}>
-                  <Plus size={16} /> {isCreating ? "Assigning..." : "Assign Question"}
-                </button>
-              </form>
-            </div>
-
-            {/* Assignments List */}
-            <div className="dashboard-card" style={{ margin: 0 }}>
-              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <h3 className="card-title" style={{ margin: 0 }}>All Assignments ({assignments.length})</h3>
-                  <div style={{ position: 'relative' }}>
-                    <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
-                    <input 
-                      type="text"
-                      placeholder="Search questions..."
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      style={{ padding: '6px 10px 6px 30px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.82rem', width: '160px' }}
-                    />
-                  </div>
-                  <select 
-                    value={completionFilter}
-                    onChange={e => setCompletionFilter(e.target.value as any)}
-                    style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.82rem', background: 'white', color: 'var(--foreground)', cursor: 'pointer' }}
-                  >
-                    <option value="all">All Statuses ({assignments.length})</option>
-                    <option value="pending">Pending ({assignments.filter(a => a.completedCount < a.totalAssigned).length})</option>
-                    <option value="completed">Completed ({assignments.filter(a => a.totalAssigned > 0 && a.completedCount === a.totalAssigned).length})</option>
-                  </select>
-                  <select 
-                    value={assignmentBranchFilter}
-                    onChange={e => setAssignmentBranchFilter(e.target.value)}
-                    style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.82rem', background: 'white', color: 'var(--foreground)', cursor: 'pointer' }}
-                  >
-                    <option value="all">All Branches</option>
-                    {availableBranches.map(b => (
-                      <option key={b} value={b}>{b}</option>
-                    ))}
-                  </select>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {selectedAssignmentIds.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button
-                      onClick={() => handleOpenBulkModal(selectedAssignmentIds)}
-                      className="btn btn-primary"
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '6px 14px' }}
+                      type="button"
+                      onClick={handleReconcile}
+                      disabled={isReconciling}
+                      className="btn btn-outline"
+                      title="Scan stored submissions and automatically mark completed questions"
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '0.85rem', cursor: isReconciling ? 'not-allowed' : 'pointer' }}
                     >
-                      <Mail size={14} /> Send Reminder ({selectedAssignmentIds.length})
+                      <RefreshCw size={14} className={isReconciling ? "animate-spin" : ""} /> {isReconciling ? "Syncing..." : "Sync Statuses"}
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleReconcile}
-                    disabled={isReconciling}
-                    className="btn btn-outline"
-                    title="Scan stored submissions and automatically mark completed questions"
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '0.85rem', cursor: isReconciling ? 'not-allowed' : 'pointer' }}
-                  >
-                    <RefreshCw size={14} className={isReconciling ? "animate-spin" : ""} /> {isReconciling ? "Syncing..." : "Sync Statuses"}
-                  </button>
-                  <a 
-                    href="/api/admin/assignments/export-all"
-                    download
-                    className="btn btn-outline"
-                    style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '0.85rem' }}
-                  >
-                    <Download size={16} /> Export All
-                  </a>
+                    <a
+                      href="/api/admin/assignments/export-all"
+                      download
+                      className="btn btn-outline"
+                      style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', fontSize: '0.85rem' }}
+                    >
+                      <Download size={16} /> Export All
+                    </a>
+                  </div>
                 </div>
+
+                {reconcileMessage && (
+                  <div style={{
+                    padding: '10px 16px', margin: '0 16px 14px 16px',
+                    borderRadius: '8px', background: '#ecfdf5', border: '1px solid #a7f3d0',
+                    color: '#065f46', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px'
+                  }}>
+                    <CheckCircle2 size={16} color="#059669" />
+                    <span>{reconcileMessage}</span>
+                  </div>
+                )}
+
+                {fetchError ? (
+                  <div style={{ padding: '32px', textAlign: 'center' }}>
+                    <div style={{ color: 'var(--destructive)', marginBottom: '12px', fontSize: '0.9rem' }}>{fetchError}</div>
+                    <button onClick={fetchAssignments} className="btn btn-outline" style={{ fontSize: '0.85rem' }}>Retry</button>
+                  </div>
+                ) : assignments.length === 0 ? (
+                  <div className="p-8 text-center text-muted">No assignments created yet.</div>
+                ) : (
+                  <div className="data-table-wrapper">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th style={{ padding: '12px 16px' }}>Question</th>
+                          <th style={{ padding: '12px 16px' }}>Target</th>
+                          <th style={{ padding: '12px 16px' }}>Completion</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'right' }}>Date &amp; Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredAssignments.map(a => {
+                          const isExpanded = expandedAssignmentId === a.id;
+                          return (
+                            <React.Fragment key={a.id}>
+                              <tr
+                                onClick={() => handleToggleExpand(a.id)}
+                                style={{
+                                  cursor: 'pointer',
+                                  borderBottom: isExpanded ? 'none' : '1px solid var(--surface-border)',
+                                  background: isExpanded ? '#fdf2f2' : undefined,
+                                }}
+                              >
+                                <td style={{ padding: '12px 16px', fontWeight: 500 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ color: 'var(--muted)', display: 'inline-flex', alignItems: 'center' }}>
+                                      {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                    </span>
+                                    <a
+                                      href={`https://leetcode.com/problems/${a.titleSlug}/`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={e => e.stopPropagation()}
+                                      style={{ color: 'var(--primary)', textDecoration: 'none' }}
+                                    >
+                                      {a.title}
+                                    </a>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '12px 16px' }}>
+                                  <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
+                                    {a.targetBranch ? `${a.targetBranch} ` : 'All Branches '}
+                                    {a.targetSection ? `(${a.targetSection})` : ''}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '12px 16px', color: 'var(--muted)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span>{a.completedCount} / {a.totalAssigned}</span>
+                                    <div style={{ width: '60px', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                                      <div style={{ height: '100%', background: 'var(--primary)', width: `${a.totalAssigned > 0 ? (a.completedCount / a.totalAssigned) * 100 : 0}%` }}></div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '12px 16px', textAlign: 'right', fontSize: '0.85rem', color: 'var(--muted)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
+                                    <span>{new Date(a.createdAt).toLocaleDateString()}</span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); handleOpenForEmail(a.id); }}
+                                      className="icon-btn"
+                                      title="Open question to filter & send individual reminder emails"
+                                      style={{ color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                                    >
+                                      <Mail size={16} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); openEditModal(a); }}
+                                      className="icon-btn"
+                                      title="Edit"
+                                      style={{ color: 'var(--muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                                    >
+                                      <Edit2 size={16} />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); handleDelete(a.id); }}
+                                      className="icon-btn"
+                                      title="Delete"
+                                      style={{ color: 'var(--destructive)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                    <a
+                                      href={`/api/admin/assignments/${a.id}/export`}
+                                      download
+                                      onClick={e => e.stopPropagation()}
+                                      title="Download Report"
+                                      className="icon-btn"
+                                      style={{ color: 'var(--primary)', textDecoration: 'none', padding: 4 }}
+                                    >
+                                      <Download size={16} />
+                                    </a>
+                                  </div>
+                                </td>
+                              </tr>
+                              {isExpanded && (
+                                <tr>
+                                  <td colSpan={4} style={{ padding: '0 16px 24px 16px', background: 'var(--surface)' }}>
+                                    <div style={{ border: '1px solid var(--surface-border)', borderRadius: '10px', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                                      {loadingDetails ? (
+                                        <div style={{ padding: '24px' }}>
+                                          <div className="skeleton-row" style={{ width: '100%', marginBottom: '12px' }}></div>
+                                          <div className="skeleton-row" style={{ width: '80%', marginBottom: '12px' }}></div>
+                                          <div className="skeleton-row" style={{ width: '90%' }}></div>
+                                        </div>
+                                      ) : assignmentDetails ? (() => {
+                                        const allStudentAssignments: any[] = assignmentDetails.studentAssignments || [];
+                                        const totalPendingAll = allStudentAssignments.filter(sa => sa.status === 'pending').length;
+
+                                        // Cascading unique Branch -> Semester -> Section options
+                                        const assignmentBranches = Array.from(
+                                          new Set(
+                                            allStudentAssignments
+                                              .map(sa => sa.student.branch?.trim())
+                                              .filter((b): b is string => Boolean(b))
+                                          )
+                                        ).sort((x, y) => x.localeCompare(y, undefined, { sensitivity: 'base' }));
+
+                                        const afterBranch = allStudentAssignments.filter(sa => {
+                                          if (expandedBranchFilter === 'all') return true;
+                                          return (sa.student.branch || '').trim().toLowerCase() === expandedBranchFilter.toLowerCase();
+                                        });
+
+                                        const assignmentSemesters = Array.from(
+                                          new Set(
+                                            afterBranch
+                                              .map(sa => sa.student.semester?.trim())
+                                              .filter((s): s is string => Boolean(s))
+                                          )
+                                        ).sort((x, y) => x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' }));
+
+                                        const afterSemester = afterBranch.filter(sa => {
+                                          if (expandedSemesterFilter === 'all') return true;
+                                          return (sa.student.semester || '').trim().toLowerCase() === expandedSemesterFilter.toLowerCase();
+                                        });
+
+                                        const assignmentSections = Array.from(
+                                          new Set(
+                                            afterSemester
+                                              .map(sa => sa.student.section?.trim())
+                                              .filter((s): s is string => Boolean(s))
+                                          )
+                                        ).sort((x, y) => x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' }));
+
+                                        const cohortStudents = afterSemester.filter(sa => {
+                                          if (
+                                            expandedSectionFilter !== 'all' &&
+                                            (sa.student.section || '').trim().toLowerCase() !== expandedSectionFilter.toLowerCase()
+                                          ) {
+                                            return false;
+                                          }
+                                          if (expandedStudentSearch.trim()) {
+                                            const q = expandedStudentSearch.trim().toLowerCase();
+                                            const matchRoll = (sa.student.rollNumber || '').toLowerCase().includes(q);
+                                            const matchName = (sa.student.name || '').toLowerCase().includes(q);
+                                            const matchEmail = (sa.student.email || '').toLowerCase().includes(q);
+                                            if (!matchRoll && !matchName && !matchEmail) return false;
+                                          }
+                                          return true;
+                                        });
+
+                                        const cohortPendingCount = cohortStudents.filter(sa => sa.status === 'pending').length;
+                                        const cohortCompletedCount = cohortStudents.filter(sa => sa.status === 'completed').length;
+
+                                        const visibleAssignments = cohortStudents.filter(sa => {
+                                          if (expandedStatusFilter === 'pending' && sa.status !== 'pending') return false;
+                                          if (expandedStatusFilter === 'completed' && sa.status !== 'completed') return false;
+                                          return true;
+                                        });
+
+                                        const hasActiveFilters =
+                                          expandedBranchFilter !== 'all' ||
+                                          expandedSemesterFilter !== 'all' ||
+                                          expandedSectionFilter !== 'all' ||
+                                          expandedStatusFilter !== 'all' ||
+                                          expandedStudentSearch.trim() !== '';
+
+                                        const missingEmailCount = visibleAssignments.filter(
+                                          sa => sa.status === 'pending' && !sa.student.email?.trim()
+                                        ).length;
+
+                                        return (
+                                          <div>
+                                            {/* Top Summary & Safe Individual Mode Bar */}
+                                            <div style={{
+                                              padding: '12px 16px',
+                                              background: '#f8fafc',
+                                              borderBottom: '1px solid var(--surface-border)',
+                                              display: 'flex',
+                                              justifyContent: 'space-between',
+                                              alignItems: 'center',
+                                              flexWrap: 'wrap',
+                                              gap: '10px',
+                                            }}>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                                <div style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>
+                                                  <strong style={{ color: '#0f172a' }}>{totalPendingAll}</strong> pending / <strong>{allStudentAssignments.length}</strong> total assigned
+                                                </div>
+                                                <span style={{
+                                                  display: 'inline-flex',
+                                                  alignItems: 'center',
+                                                  gap: '5px',
+                                                  fontSize: '0.75rem',
+                                                  fontWeight: 600,
+                                                  color: '#065f46',
+                                                  background: '#ecfdf5',
+                                                  border: '1px solid #a7f3d0',
+                                                  padding: '3px 10px',
+                                                  borderRadius: '9999px',
+                                                }}>
+                                                  <Mail size={12} /> Individual Mail Mode (1 student at a time)
+                                                </span>
+                                              </div>
+
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setShowDomainFallback(prev => !prev)}
+                                                  className="btn btn-outline"
+                                                  style={{ fontSize: '0.76rem', padding: '4px 10px' }}
+                                                  title="Optional fallback domain for students without email in database"
+                                                >
+                                                  {normalizedFallbackDomain ? `Fallback: @${normalizedFallbackDomain}` : 'Domain Fallback'}
+                                                </button>
+                                                {hasActiveFilters && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => resetExpandedFilters('all')}
+                                                    style={{
+                                                      background: 'transparent',
+                                                      border: 'none',
+                                                      color: 'var(--primary)',
+                                                      fontSize: '0.78rem',
+                                                      fontWeight: 600,
+                                                      cursor: 'pointer',
+                                                      padding: '4px 6px',
+                                                    }}
+                                                  >
+                                                    Reset Filters
+                                                  </button>
+                                                )}
+                                              </div>
+                                            </div>
+
+                                            {/* Filter Bar: Branch, Semester, Section, Status, Search */}
+                                            <div style={{
+                                              padding: '12px 16px',
+                                              background: '#ffffff',
+                                              borderBottom: '1px solid var(--surface-border)',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'space-between',
+                                              flexWrap: 'wrap',
+                                              gap: '10px',
+                                            }}>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 600, color: 'var(--muted)' }}>
+                                                  <Filter size={13} /> Filter:
+                                                </span>
+
+                                                {/* Branch Filter */}
+                                                <select
+                                                  aria-label="Filter by Branch"
+                                                  value={expandedBranchFilter}
+                                                  onChange={e => {
+                                                    setExpandedBranchFilter(e.target.value);
+                                                    setExpandedSemesterFilter('all');
+                                                    setExpandedSectionFilter('all');
+                                                  }}
+                                                  style={{
+                                                    padding: '6px 10px',
+                                                    fontSize: '0.8rem',
+                                                    borderRadius: '6px',
+                                                    border: '1px solid var(--surface-border)',
+                                                    background: expandedBranchFilter !== 'all' ? '#fdf2f2' : 'white',
+                                                    color: 'var(--foreground)',
+                                                    fontWeight: expandedBranchFilter !== 'all' ? 600 : 400,
+                                                    cursor: 'pointer',
+                                                  }}
+                                                >
+                                                  <option value="all">All Branches</option>
+                                                  {assignmentBranches.map(b => (
+                                                    <option key={b} value={b}>{b}</option>
+                                                  ))}
+                                                </select>
+
+                                                {/* Semester Filter */}
+                                                <select
+                                                  aria-label="Filter by Semester"
+                                                  value={expandedSemesterFilter}
+                                                  onChange={e => {
+                                                    setExpandedSemesterFilter(e.target.value);
+                                                    setExpandedSectionFilter('all');
+                                                  }}
+                                                  style={{
+                                                    padding: '6px 10px',
+                                                    fontSize: '0.8rem',
+                                                    borderRadius: '6px',
+                                                    border: '1px solid var(--surface-border)',
+                                                    background: expandedSemesterFilter !== 'all' ? '#fdf2f2' : 'white',
+                                                    color: 'var(--foreground)',
+                                                    fontWeight: expandedSemesterFilter !== 'all' ? 600 : 400,
+                                                    cursor: 'pointer',
+                                                  }}
+                                                >
+                                                  <option value="all">All Semesters</option>
+                                                  {assignmentSemesters.map(sem => (
+                                                    <option key={sem} value={sem}>Sem {sem}</option>
+                                                  ))}
+                                                </select>
+
+                                                {/* Section Filter */}
+                                                <select
+                                                  aria-label="Filter by Section"
+                                                  value={expandedSectionFilter}
+                                                  onChange={e => setExpandedSectionFilter(e.target.value)}
+                                                  style={{
+                                                    padding: '6px 10px',
+                                                    fontSize: '0.8rem',
+                                                    borderRadius: '6px',
+                                                    border: '1px solid var(--surface-border)',
+                                                    background: expandedSectionFilter !== 'all' ? '#fdf2f2' : 'white',
+                                                    color: 'var(--foreground)',
+                                                    fontWeight: expandedSectionFilter !== 'all' ? 600 : 400,
+                                                    cursor: 'pointer',
+                                                  }}
+                                                >
+                                                  <option value="all">All Sections</option>
+                                                  {assignmentSections.map(s => (
+                                                    <option key={s} value={s}>Sec {s}</option>
+                                                  ))}
+                                                </select>
+
+                                                {/* Student Search */}
+                                                <div style={{ position: 'relative' }}>
+                                                  <Search size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--muted)' }} />
+                                                  <input
+                                                    type="text"
+                                                    placeholder="Roll no or name..."
+                                                    value={expandedStudentSearch}
+                                                    onChange={e => setExpandedStudentSearch(e.target.value)}
+                                                    style={{
+                                                      padding: '6px 10px 6px 28px',
+                                                      borderRadius: '6px',
+                                                      border: '1px solid var(--surface-border)',
+                                                      fontSize: '0.8rem',
+                                                      width: '155px',
+                                                    }}
+                                                  />
+                                                </div>
+                                              </div>
+
+                                              {/* Status Pills */}
+                                              <div style={{ display: 'inline-flex', alignItems: 'center', background: '#e2e8f0', padding: '2px', borderRadius: '6px', gap: '2px' }}>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setExpandedStatusFilter('all')}
+                                                  style={{
+                                                    padding: '4px 10px', fontSize: '0.76rem', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: 'pointer',
+                                                    background: expandedStatusFilter === 'all' ? 'white' : 'transparent',
+                                                    color: expandedStatusFilter === 'all' ? 'var(--primary)' : 'var(--muted)',
+                                                    boxShadow: expandedStatusFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                                                  }}
+                                                >
+                                                  All ({cohortStudents.length})
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setExpandedStatusFilter('pending')}
+                                                  style={{
+                                                    padding: '4px 10px', fontSize: '0.76rem', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: 'pointer',
+                                                    background: expandedStatusFilter === 'pending' ? 'white' : 'transparent',
+                                                    color: expandedStatusFilter === 'pending' ? '#d97706' : 'var(--muted)',
+                                                    boxShadow: expandedStatusFilter === 'pending' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                                                  }}
+                                                >
+                                                  Pending ({cohortPendingCount})
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setExpandedStatusFilter('completed')}
+                                                  style={{
+                                                    padding: '4px 10px', fontSize: '0.76rem', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: 'pointer',
+                                                    background: expandedStatusFilter === 'completed' ? 'white' : 'transparent',
+                                                    color: expandedStatusFilter === 'completed' ? '#059669' : 'var(--muted)',
+                                                    boxShadow: expandedStatusFilter === 'completed' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                                                  }}
+                                                >
+                                                  Done ({cohortCompletedCount})
+                                                </button>
+                                              </div>
+                                            </div>
+
+                                            {/* Optional College Domain Fallback Bar */}
+                                            {showDomainFallback && (
+                                              <div style={{
+                                                padding: '10px 16px',
+                                                background: '#f8fafc',
+                                                borderBottom: '1px solid var(--surface-border)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                flexWrap: 'wrap',
+                                                gap: '10px',
+                                                fontSize: '0.8rem',
+                                              }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                  <label style={{ fontWeight: 600, color: '#334155' }}>College Domain Fallback:</label>
+                                                  <input
+                                                    type="text"
+                                                    value={defaultDomain}
+                                                    onChange={e => setDefaultDomain(e.target.value)}
+                                                    placeholder="e.g. college.edu"
+                                                    style={{
+                                                      padding: '5px 10px',
+                                                      borderRadius: '6px',
+                                                      border: '1px solid var(--surface-border)',
+                                                      fontSize: '0.8rem',
+                                                      width: '180px',
+                                                      background: 'white',
+                                                    }}
+                                                  />
+                                                  <span style={{ color: 'var(--muted)', fontSize: '0.76rem' }}>
+                                                    Used as <code>[RollNumber]@domain</code> only when a student has no email saved.
+                                                  </span>
+                                                </div>
+                                                {missingEmailCount > 0 && (
+                                                  <Link
+                                                    href="/admin/emails"
+                                                    style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '0.78rem', textDecoration: 'underline' }}
+                                                  >
+                                                    Manage Student Emails &rarr;
+                                                  </Link>
+                                                )}
+                                              </div>
+                                            )}
+
+                                            {/* Individual Email Feedback Banner */}
+                                            {individualMailFeedback && (
+                                              <div style={{
+                                                padding: '10px 16px',
+                                                borderBottom: '1px solid var(--surface-border)',
+                                                background:
+                                                  individualMailFeedback.type === 'success'
+                                                    ? '#ecfdf5'
+                                                    : individualMailFeedback.type === 'error'
+                                                      ? '#fef2f2'
+                                                      : '#eff6ff',
+                                                color:
+                                                  individualMailFeedback.type === 'success'
+                                                    ? '#065f46'
+                                                    : individualMailFeedback.type === 'error'
+                                                      ? '#991b1b'
+                                                      : '#1e40af',
+                                                fontSize: '0.84rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                gap: '10px',
+                                              }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                  {individualMailFeedback.type === 'error' ? (
+                                                    <AlertCircle size={16} />
+                                                  ) : (
+                                                    <CheckCircle2 size={16} />
+                                                  )}
+                                                  <span>{individualMailFeedback.message}</span>
+                                                </div>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setIndividualMailFeedback(null)}
+                                                  style={{ background: 'transparent', border: 'none', color: 'inherit', cursor: 'pointer', padding: 2 }}
+                                                  title="Dismiss"
+                                                >
+                                                  <X size={15} />
+                                                </button>
+                                              </div>
+                                            )}
+
+                                            {/* Filtered Student Table */}
+                                            <div style={{ maxHeight: '460px', overflowY: 'auto' }}>
+                                              <table className="data-table" style={{ margin: 0 }}>
+                                                <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--background)' }}>
+                                                  <tr>
+                                                    <th style={{ padding: '10px 14px' }}>Roll Number</th>
+                                                    <th style={{ padding: '10px 14px' }}>Name</th>
+                                                    <th style={{ padding: '10px 14px' }}>Branch</th>
+                                                    <th style={{ padding: '10px 14px' }}>Sem</th>
+                                                    <th style={{ padding: '10px 14px' }}>Sec</th>
+                                                    <th style={{ padding: '10px 14px' }}>Email</th>
+                                                    <th style={{ padding: '10px 14px' }}>Status</th>
+                                                    <th style={{ padding: '10px 14px', textAlign: 'right' }}>Send Mail</th>
+                                                  </tr>
+                                                </thead>
+                                                <tbody>
+                                                  {visibleAssignments.length === 0 ? (
+                                                    <tr>
+                                                      <td colSpan={8} style={{ textAlign: 'center', padding: '28px 16px', color: 'var(--muted)', fontSize: '0.88rem' }}>
+                                                        No students match the selected Branch / Semester / Section filters.
+                                                      </td>
+                                                    </tr>
+                                                  ) : visibleAssignments.map((sa: any) => {
+                                                    const student = sa.student;
+                                                    const savedEmail = student.email?.trim() || '';
+                                                    const effectiveEmail =
+                                                      savedEmail ||
+                                                      (normalizedFallbackDomain ? `${student.rollNumber}@${normalizedFallbackDomain}` : '');
+                                                    const isSendingThis = sendingStudentId === student.id;
+                                                    const isAnySending = sendingStudentId !== null;
+                                                    const wasSent = Boolean(sentReminders[`${a.id}:${student.id}`]);
+
+                                                    return (
+                                                      <tr key={student.id}>
+                                                        <td style={{ padding: '9px 14px', fontWeight: 600, fontSize: '0.84rem' }}>{student.rollNumber}</td>
+                                                        <td style={{ padding: '9px 14px', fontSize: '0.85rem' }}>{student.name}</td>
+                                                        <td style={{ padding: '9px 14px', fontSize: '0.83rem', color: 'var(--muted)' }}>{student.branch || '—'}</td>
+                                                        <td style={{ padding: '9px 14px', fontSize: '0.83rem', color: 'var(--muted)' }}>{student.semester || '—'}</td>
+                                                        <td style={{ padding: '9px 14px', fontSize: '0.83rem', color: 'var(--muted)' }}>{student.section || '—'}</td>
+                                                        <td style={{ padding: '9px 14px', fontSize: '0.82rem' }}>
+                                                          {savedEmail ? (
+                                                            <span style={{ color: 'var(--primary)' }}>{savedEmail}</span>
+                                                          ) : effectiveEmail ? (
+                                                            <span style={{ color: 'var(--muted)', fontStyle: 'italic' }} title="Using college domain fallback">
+                                                              {effectiveEmail}
+                                                            </span>
+                                                          ) : (
+                                                            <span style={{
+                                                              color: '#b45309',
+                                                              background: '#fef3c7',
+                                                              padding: '2px 7px',
+                                                              borderRadius: '4px',
+                                                              fontSize: '0.74rem',
+                                                              fontWeight: 600,
+                                                            }}>
+                                                              No Email
+                                                            </span>
+                                                          )}
+                                                        </td>
+                                                        <td style={{ padding: '9px 14px' }}>
+                                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                            <span className={`status-badge ${sa.status === 'completed' ? 'success' : 'pending'}`} style={{ width: 'fit-content' }}>
+                                                              {sa.status === 'completed' ? 'Done' : 'Pending'}
+                                                            </span>
+                                                            {sa.completedAt && (
+                                                              <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
+                                                                {new Intl.DateTimeFormat('en-IN', {
+                                                                  timeZone: 'Asia/Kolkata',
+                                                                  day: '2-digit', month: '2-digit', year: '2-digit',
+                                                                  hour: '2-digit', minute: '2-digit',
+                                                                  hour12: true
+                                                                }).format(new Date(sa.completedAt))}
+                                                              </span>
+                                                            )}
+                                                          </div>
+                                                        </td>
+                                                        <td style={{ padding: '9px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                                          {sa.status === 'completed' ? (
+                                                            <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Completed</span>
+                                                          ) : !effectiveEmail ? (
+                                                            <Link
+                                                              href="/admin/emails"
+                                                              style={{
+                                                                fontSize: '0.76rem',
+                                                                color: 'var(--muted)',
+                                                                textDecoration: 'underline',
+                                                              }}
+                                                              title="Add student email on Student Emails page"
+                                                            >
+                                                              Add Email
+                                                            </Link>
+                                                          ) : wasSent ? (
+                                                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                              <span style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                                fontSize: '0.76rem',
+                                                                fontWeight: 600,
+                                                                color: '#059669',
+                                                                background: '#ecfdf5',
+                                                                border: '1px solid #a7f3d0',
+                                                                padding: '4px 8px',
+                                                                borderRadius: '6px',
+                                                              }}>
+                                                                <CheckCircle2 size={13} /> Sent
+                                                              </span>
+                                                              <button
+                                                                type="button"
+                                                                disabled={isAnySending}
+                                                                onClick={() => handleSendIndividualReminder(a.id, sa)}
+                                                                className="btn btn-outline"
+                                                                style={{
+                                                                  padding: '4px 8px',
+                                                                  fontSize: '0.74rem',
+                                                                  opacity: isAnySending ? 0.5 : 1,
+                                                                  cursor: isAnySending ? 'not-allowed' : 'pointer',
+                                                                }}
+                                                                title={`Send again to ${effectiveEmail}`}
+                                                              >
+                                                                {isSendingThis ? 'Sending...' : 'Resend'}
+                                                              </button>
+                                                            </div>
+                                                          ) : (
+                                                            <button
+                                                              type="button"
+                                                              disabled={isAnySending}
+                                                              onClick={() => handleSendIndividualReminder(a.id, sa)}
+                                                              className="btn btn-primary"
+                                                              style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '5px',
+                                                                padding: '5px 11px',
+                                                                fontSize: '0.78rem',
+                                                                opacity: isAnySending && !isSendingThis ? 0.5 : 1,
+                                                                cursor: isAnySending ? 'not-allowed' : 'pointer',
+                                                              }}
+                                                              title={`Send reminder email to ${effectiveEmail}`}
+                                                            >
+                                                              {isSendingThis ? (
+                                                                <>
+                                                                  <RefreshCw size={12} className="animate-spin" />
+                                                                  <span>Sending...</span>
+                                                                </>
+                                                              ) : (
+                                                                <>
+                                                                  <Send size={12} />
+                                                                  <span>Send Mail</span>
+                                                                </>
+                                                              )}
+                                                            </button>
+                                                          )}
+                                                        </td>
+                                                      </tr>
+                                                    );
+                                                  })}
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          </div>
+                                        );
+                                      })() : (
+                                        <div style={{ padding: '24px', textAlign: 'center', color: 'var(--destructive)' }}>Failed to load details.</div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
-              {reconcileMessage && (
-                <div style={{
-                  padding: '10px 16px', margin: '0 16px 14px 16px',
-                  borderRadius: '8px', background: '#ecfdf5', border: '1px solid #a7f3d0',
-                  color: '#065f46', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px'
-                }}>
-                  <CheckCircle2 size={16} color="#059669" />
-                  <span>{reconcileMessage}</span>
-                </div>
-              )}
-
-              {/* Selection Action Banner */}
-              {selectedAssignmentIds.length > 0 && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  background: 'linear-gradient(135deg, #a40e19 0%, #7d0b13 100%)',
-                  color: 'white', padding: '12px 18px', margin: '0 16px 14px 16px',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 14px rgba(164, 14, 25, 0.25)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ background: 'rgba(255, 255, 255, 0.2)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.35)', padding: '2px 8px', borderRadius: '12px', fontWeight: 700, fontSize: '0.78rem' }}>
-                      {selectedAssignmentIds.length} Selected
-                    </span>
-                    <span style={{ fontSize: '0.85rem' }}>
-                      {selectedAssignmentIds.length > 10 ? (
-                        <>Selected for email reminders &bull; Automatically sent in batches of <strong>10 questions per email</strong>.</>
-                      ) : (
-                        <>Selected for single-send email reminder (bundled via BCC into <strong>1 single email</strong>).</>
-                      )}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button 
-                      onClick={() => setSelectedAssignmentIds([])}
-                      style={{ background: 'rgba(255, 255, 255, 0.15)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.3)', borderRadius: '6px', fontSize: '0.78rem', padding: '5px 12px', cursor: 'pointer' }}
-                    >
-                      Clear
-                    </button>
-                    <button
-                      onClick={() => handleOpenBulkModal(selectedAssignmentIds)}
-                      style={{ background: 'white', color: 'var(--primary)', border: 'none', borderRadius: '6px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '6px 14px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
-                    >
-                      <Mail size={14} /> Send Reminder ({selectedAssignmentIds.length} {selectedAssignmentIds.length === 1 ? 'Question' : 'Questions'})
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {fetchError ? (
-                <div style={{ padding: '32px', textAlign: 'center' }}>
-                  <div style={{ color: 'var(--destructive)', marginBottom: '12px', fontSize: '0.9rem' }}>{fetchError}</div>
-                  <button onClick={fetchAssignments} className="btn btn-outline" style={{ fontSize: '0.85rem' }}>Retry</button>
-                </div>
-              ) : assignments.length === 0 ? (
-                <div className="p-8 text-center text-muted">No assignments created yet.</div>
-              ) : (
-                <div className="data-table-wrapper">
-                  <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '42px', padding: '12px 8px 12px 16px', textAlign: 'center' }}>
-                        <input 
-                          type="checkbox"
-                          checked={filteredAssignments.length > 0 && filteredAssignments.every(a => selectedAssignmentIds.includes(a.id))}
-                          onChange={toggleSelectAll}
-                          title="Select / Deselect all visible questions"
-                          style={{ cursor: 'pointer', width: 16, height: 16, accentColor: 'var(--primary)' }}
-                        />
-                      </th>
-                      <th style={{padding: '12px 16px'}}>Question</th>
-                      <th style={{padding: '12px 16px'}}>Target</th>
-                      <th style={{padding: '12px 16px'}}>Completion</th>
-                      <th style={{padding: '12px 16px', textAlign: 'right'}}>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAssignments.map(a => (
-                      <React.Fragment key={a.id}>
-                        <tr onClick={() => handleToggleExpand(a.id)} style={{ cursor: 'pointer', borderBottom: expandedAssignmentId === a.id ? 'none' : '1px solid var(--surface-border)' }}>
-                          <td style={{ width: '42px', padding: '12px 8px 12px 16px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                            <input 
-                              type="checkbox"
-                              checked={selectedAssignmentIds.includes(a.id)}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                toggleSelectAssignment(a.id);
-                              }}
-                              style={{ cursor: 'pointer', width: 16, height: 16, accentColor: 'var(--primary)' }}
-                            />
-                          </td>
-                          <td style={{padding: '12px 16px', fontWeight: 500}}>
-                            <a href={`https://leetcode.com/problems/${a.titleSlug}/`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{color: 'var(--primary)', textDecoration: 'none'}}>
-                              {a.title}
-                            </a>
-                          </td>
-                          <td style={{padding: '12px 16px'}}>
-                            <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
-                              {a.targetBranch ? `${a.targetBranch} ` : 'All Branches '}
-                              {a.targetSection ? `(${a.targetSection})` : ''}
-                            </span>
-                          </td>
-                          <td style={{padding: '12px 16px', color: 'var(--muted)'}}>
-                            <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                              <span>{a.completedCount} / {a.totalAssigned}</span>
-                              <div style={{width: '60px', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden'}}>
-                                <div style={{height: '100%', background: 'var(--primary)', width: `${a.totalAssigned > 0 ? (a.completedCount / a.totalAssigned) * 100 : 0}%`}}></div>
-                              </div>
-                            </div>
-                          </td>
-                          <td style={{padding: '12px 16px', textAlign: 'right', fontSize: '0.85rem', color: 'var(--muted)'}}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px' }}>
-                              <span>{new Date(a.createdAt).toLocaleDateString()}</span>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); handleOpenBulkModal([a.id], a.targetBranch || "", a.targetSection || ""); }}
-                                className="icon-btn"
-                                title="Send Email Reminder to Pending Students"
-                                style={{ color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
-                              >
-                                <Mail size={16} />
-                              </button>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); openEditModal(a); }}
-                                className="icon-btn"
-                                title="Edit"
-                                style={{ color: 'var(--muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
-                              >
-                                <Edit2 size={16} />
-                              </button>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); handleDelete(a.id); }}
-                                className="icon-btn"
-                                title="Delete"
-                                style={{ color: 'var(--destructive)', background: 'transparent', border: 'none', cursor: 'pointer', padding: 4 }}
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                              <a 
-                                href={`/api/admin/assignments/${a.id}/export`}
-                                download
-                                onClick={e => e.stopPropagation()}
-                                title="Download Report"
-                                className="icon-btn"
-                                style={{ color: 'var(--primary)', textDecoration: 'none', padding: 4 }}
-                              >
-                                <Download size={16} />
-                              </a>
-                            </div>
-                          </td>
-                        </tr>
-                        {expandedAssignmentId === a.id && (
-                          <tr>
-                            <td colSpan={5} style={{ padding: '0 16px 24px 16px', background: 'var(--surface)' }}>
-                              <div style={{ border: '1px solid var(--surface-border)', borderRadius: '8px', overflow: 'hidden' }}>
-                                {loadingDetails ? (
-                                  <div style={{ padding: '24px' }}>
-                                    <div className="skeleton-row" style={{ width: '100%', marginBottom: '12px' }}></div>
-                                    <div className="skeleton-row" style={{ width: '80%', marginBottom: '12px' }}></div>
-                                    <div className="skeleton-row" style={{ width: '90%' }}></div>
-                                  </div>
-                                ) : assignmentDetails ? (() => {
-                                  const pendingCount = assignmentDetails.studentAssignments.filter((sa: any) => sa.status === 'pending').length;
-                                  const completedCount = assignmentDetails.studentAssignments.filter((sa: any) => sa.status === 'completed').length;
-                                  const assignmentSections = Array.from(new Set(assignmentDetails.studentAssignments.map((sa: any) => sa.student.section).filter(Boolean))).sort() as string[];
-                                  const visibleAssignments = assignmentDetails.studentAssignments.filter((sa: any) => {
-                                    if (expandedStatusFilter === 'pending' && sa.status !== 'pending') return false;
-                                    if (expandedStatusFilter === 'completed' && sa.status !== 'completed') return false;
-                                    if (expandedSectionFilter !== 'all' && (sa.student.section || '').toLowerCase() !== expandedSectionFilter.toLowerCase()) return false;
-                                    return true;
-                                  });
-                                  const filteredPendingCount = visibleAssignments.filter((sa: any) => sa.status === 'pending').length;
-
-                                  return (
-                                    <div>
-                                      <div style={{ padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid var(--surface-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-                                          <div style={{ fontSize: '0.88rem', color: 'var(--muted)' }}>
-                                            <strong style={{ color: '#0f172a' }}>{pendingCount}</strong> pending / <strong>{assignmentDetails.studentAssignments.length}</strong> total assigned
-                                          </div>
-                                          <div style={{ display: 'inline-flex', alignItems: 'center', background: '#e2e8f0', padding: '2px', borderRadius: '6px', gap: '2px' }}>
-                                            <button
-                                              type="button"
-                                              onClick={() => setExpandedStatusFilter('all')}
-                                              style={{
-                                                padding: '3px 8px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: 'pointer',
-                                                background: expandedStatusFilter === 'all' ? 'white' : 'transparent',
-                                                color: expandedStatusFilter === 'all' ? 'var(--primary)' : 'var(--muted)',
-                                                boxShadow: expandedStatusFilter === 'all' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
-                                              }}
-                                            >
-                                              All ({assignmentDetails.studentAssignments.length})
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => setExpandedStatusFilter('pending')}
-                                              style={{
-                                                padding: '3px 8px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: 'pointer',
-                                                background: expandedStatusFilter === 'pending' ? 'white' : 'transparent',
-                                                color: expandedStatusFilter === 'pending' ? '#d97706' : 'var(--muted)',
-                                                boxShadow: expandedStatusFilter === 'pending' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
-                                              }}
-                                            >
-                                              Pending ({pendingCount})
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => setExpandedStatusFilter('completed')}
-                                              style={{
-                                                padding: '3px 8px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '4px', border: 'none', cursor: 'pointer',
-                                                background: expandedStatusFilter === 'completed' ? 'white' : 'transparent',
-                                                color: expandedStatusFilter === 'completed' ? '#059669' : 'var(--muted)',
-                                                boxShadow: expandedStatusFilter === 'completed' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
-                                              }}
-                                            >
-                                              Done ({completedCount})
-                                            </button>
-                                          </div>
-                                          {assignmentSections.length > 0 && (
-                                            <select
-                                              value={expandedSectionFilter}
-                                              onChange={e => setExpandedSectionFilter(e.target.value)}
-                                              style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid var(--surface-border)', background: 'white', color: 'var(--foreground)', cursor: 'pointer' }}
-                                            >
-                                              <option value="all">All Sections</option>
-                                              {assignmentSections.map(s => (
-                                                <option key={s} value={s}>Sec {s}</option>
-                                              ))}
-                                            </select>
-                                          )}
-                                        </div>
-                                        <button 
-                                          onClick={(e) => { 
-                                            e.stopPropagation(); 
-                                            handleOpenBulkModal([a.id], a.targetBranch || "", expandedSectionFilter !== 'all' ? expandedSectionFilter : (a.targetSection || "")); 
-                                          }}
-                                          className="btn btn-primary"
-                                          style={{ fontSize: '0.82rem', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                                        >
-                                          <Mail size={14} /> Send Email Reminder ({expandedSectionFilter !== 'all' ? `${filteredPendingCount} in Sec ${expandedSectionFilter}` : `${pendingCount} Pending`})
-                                        </button>
-                                      </div>
-                                      <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                        <table className="data-table" style={{ margin: 0 }}>
-                                          <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--background)' }}>
-                                            <tr>
-                                              <th style={{padding: '8px 16px'}}>Roll Number</th>
-                                              <th style={{padding: '8px 16px'}}>Name</th>
-                                              <th style={{padding: '8px 16px'}}>Email</th>
-                                              <th style={{padding: '8px 16px'}}>Section</th>
-                                              <th style={{padding: '8px 16px'}}>Status</th>
-                                              <th style={{padding: '8px 16px'}}>Completed At</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {visibleAssignments.length === 0 ? (
-                                              <tr>
-                                                <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--muted)', fontSize: '0.88rem' }}>
-                                                  No {expandedStatusFilter} students found for this assignment.
-                                                </td>
-                                              </tr>
-                                            ) : visibleAssignments.map((sa: any) => (
-                                              <tr key={sa.student.id}>
-                                                <td style={{padding: '8px 16px'}}>{sa.student.rollNumber}</td>
-                                                <td style={{padding: '8px 16px'}}>{sa.student.name}</td>
-                                                <td style={{padding: '8px 16px', color: 'var(--muted)', fontSize: '0.85rem'}}>
-                                                  {sa.student.email ? (
-                                                    <span style={{ color: 'var(--primary)' }}>{sa.student.email}</span>
-                                                  ) : (
-                                                    <span style={{ opacity: 0.5 }}>-</span>
-                                                  )}
-                                                </td>
-                                                <td style={{padding: '8px 16px'}}>{sa.student.branch || ''} {sa.student.section || ''}</td>
-                                                <td style={{padding: '8px 16px'}}>
-                                                  <span className={`status-badge ${sa.status === 'completed' ? 'success' : 'pending'}`}>
-                                                    {sa.status === 'completed' ? 'Done' : 'Pending'}
-                                                  </span>
-                                                </td>
-                                                <td style={{padding: '8px 16px', color: 'var(--muted)', fontSize: '0.85rem'}}>
-                                                  {sa.completedAt ? new Intl.DateTimeFormat('en-IN', {
-                                                    timeZone: 'Asia/Kolkata',
-                                                    day: '2-digit', month: '2-digit', year: 'numeric',
-                                                    hour: '2-digit', minute: '2-digit', second: '2-digit',
-                                                    hour12: true
-                                                  }).format(new Date(sa.completedAt)) : '-'}
-                                                </td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                    </div>
-                                  );
-                                })() : (
-                                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--destructive)' }}>Failed to load details.</div>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
-              )}
-            </div>
-            
             </div>
 
-            {/* Right Column: Student Lookup */}
+            {/* Student Lookup */}
             <div style={{ flex: '1 1 100%', minWidth: 0, display: 'flex', flexDirection: 'column', gap: '24px' }}>
               <div className="dashboard-card" style={{ margin: 0 }}>
                 <div className="card-header">
@@ -949,7 +1252,7 @@ export default function AssignmentsPage() {
                 </div>
                 <div style={{ padding: '24px' }}>
                   <form onSubmit={handleLookupStudent} style={{ display: 'flex', gap: '12px' }}>
-                    <input 
+                    <input
                       type="text"
                       placeholder="Enter Roll Number..."
                       value={lookupRollNumber}
@@ -989,9 +1292,9 @@ export default function AssignmentsPage() {
                                 {sub.title}
                               </a>
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--muted)' }}>
-                                <span style={{ 
+                                <span style={{
                                   color: sub.difficulty === 'Easy' ? 'var(--success)' : sub.difficulty === 'Medium' ? 'var(--warning)' : sub.difficulty === 'Hard' ? 'var(--destructive)' : 'var(--muted)',
-                                  fontWeight: 600 
+                                  fontWeight: 600
                                 }}>
                                   {sub.difficulty || 'Unknown'}
                                 </span>
@@ -1021,20 +1324,20 @@ export default function AssignmentsPage() {
       {/* Edit Modal */}
       {editingAssignment && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-          backgroundColor: 'rgba(0,0,0,0.5)', 
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
           zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px'
         }}>
           <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '500px', boxShadow: 'var(--shadow-xl)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ margin: 0 }}>Edit Assignment</h3>
-              <button onClick={() => setEditingAssignment(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}><X size={20}/></button>
+              <button onClick={() => setEditingAssignment(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}><X size={20} /></button>
             </div>
             <form onSubmit={handleUpdateAssignment} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>LeetCode URL</label>
-                <input 
-                  type="url" 
+                <input
+                  type="url"
                   value={editUrl}
                   onChange={(e) => setEditUrl(e.target.value)}
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
@@ -1043,8 +1346,8 @@ export default function AssignmentsPage() {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Title</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
@@ -1054,7 +1357,7 @@ export default function AssignmentsPage() {
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Target Branch (Optional)</label>
-                  <select 
+                  <select
                     value={editTargetBranch}
                     onChange={(e) => setEditTargetBranch(e.target.value)}
                     style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', backgroundColor: 'var(--background)' }}
@@ -1067,8 +1370,8 @@ export default function AssignmentsPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.85rem', fontWeight: 600 }}>Target Section (Optional)</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={editTargetSection}
                     onChange={(e) => setEditTargetSection(e.target.value)}
                     style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
@@ -1085,549 +1388,6 @@ export default function AssignmentsPage() {
           </div>
         </div>
       )}
-
-      {/* Email Notification Reminder Modal (Multi-Question & Single-Send BCC) */}
-      {bulkModalOpen && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-          backgroundColor: 'rgba(0,0,0,0.5)', 
-          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px'
-        }}>
-          <div style={{ background: 'white', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '580px', boxShadow: 'var(--shadow-xl)', maxHeight: '92vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: 36, height: 36, borderRadius: '8px', background: 'rgba(164, 14, 25, 0.08)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Mail size={20} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
-                    {targetAssignmentIds.length === 1 ? 'Send Email Reminder (1 Question)' : `Send Bulk Reminder (${targetAssignmentIds.length} Questions)`}
-                  </h3>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: 2 }}>
-                    From: <strong style={{ color: '#0f172a' }}>leetcodetrackernotify@gmail.com</strong>
-                  </div>
-                </div>
-              </div>
-              <button 
-                onClick={handleCloseNotifyModal} 
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}
-              >
-                <X size={20}/>
-              </button>
-            </div>
-
-            {/* Delivery Info Notice */}
-            <div style={{ background: 'rgba(164, 14, 25, 0.04)', border: '1px solid rgba(164, 14, 25, 0.18)', borderRadius: '8px', padding: '12px 14px', marginBottom: '18px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-              <div style={{ color: 'var(--primary)', marginTop: '2px' }}><CheckCircle2 size={18} /></div>
-              <div style={{ fontSize: '0.82rem', color: '#7d0b13', lineHeight: 1.5 }}>
-                {targetAssignmentIds.length > 10 ? (
-                  <>
-                    <strong>Automatic 10-Question Chunking:</strong> You selected <strong>{targetAssignmentIds.length} questions</strong>. They will automatically be sent in <strong>{Math.ceil(targetAssignmentIds.length / 10)} emails</strong> (maximum <strong>10 questions per email</strong>) via safe batches of <strong>20 BCC recipients</strong> to ensure high deliverability and avoid spam filters.
-                  </>
-                ) : (
-                  <>
-                    <strong>Safe Group Dispatch:</strong> Student recipients are dispatched via safe batches of <strong>20 BCC recipients</strong> to protect student privacy and avoid Gmail spam flags.
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Selected Questions List */}
-            <div style={{ background: '#f8fafc', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', maxHeight: '160px', overflowY: 'auto' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: 'var(--muted)', fontWeight: 700, letterSpacing: '0.5px' }}>
-                  Selected Questions ({targetAssignmentIds.length})
-                </div>
-                {targetAssignmentIds.length > 10 && (
-                  <span style={{ fontSize: '0.72rem', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
-                    {Math.ceil(targetAssignmentIds.length / 10)} Emails (10 Qs / Email)
-                  </span>
-                )}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {targetAssignmentIds.map((id, index) => {
-                  const a = assignments.find(x => x.id === id);
-                  const title = a?.title || a?.titleSlug || id;
-                  const isBatchStart = index > 0 && index % 10 === 0;
-                  const batchNum = Math.floor(index / 10) + 1;
-                  return (
-                    <React.Fragment key={id}>
-                      {isBatchStart && (
-                        <div style={{ margin: '8px 0 2px', borderTop: '1px dashed #cbd5e1', paddingTop: '6px', fontSize: '0.74rem', fontWeight: 700, color: 'var(--primary)' }}>
-                          📬 Email #{batchNum} (Questions {index + 1}–{Math.min(index + 10, targetAssignmentIds.length)})
-                        </div>
-                      )}
-                      {index === 0 && targetAssignmentIds.length > 10 && (
-                        <div style={{ margin: '0 0 2px', fontSize: '0.74rem', fontWeight: 700, color: 'var(--primary)' }}>
-                          📬 Email #1 (Questions 1–{Math.min(10, targetAssignmentIds.length)})
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                        <span><strong>#{index + 1}</strong> {title}</span>
-                        {a?.titleSlug && (
-                          <a href={`https://leetcode.com/problems/${a.titleSlug}/`} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem', color: 'var(--primary)', textDecoration: 'none' }}>
-                            View &rarr;
-                          </a>
-                        )}
-                      </div>
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-            </div>
-
-            {notifyError && (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <AlertCircle size={18} />
-                <span>{notifyError}</span>
-              </div>
-            )}
-
-            {notificationResult ? (
-              <div>
-                <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#059669', fontWeight: 700, fontSize: '1rem' }}>
-                      <CheckCircle2 size={20} />
-                      <span>Notification Run Completed!</span>
-                    </div>
-                    {(notificationResult.filterBranch || notificationResult.filterSection) && (
-                      <span style={{ fontSize: '0.78rem', color: '#065f46', background: '#d1fae5', padding: '3px 8px', borderRadius: '4px', fontWeight: 600 }}>
-                        Target: {notificationResult.filterBranch || 'All Branches'} {notificationResult.filterSection ? `• Section ${notificationResult.filterSection}` : '• All Sections'}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '12px', textAlign: 'center' }}>
-                    <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid rgba(164, 14, 25, 0.2)' }}>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--primary)' }}>{notificationResult.emailsSent}</div>
-                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                        {notificationResult.questionBatchesCount > 1 ? `${notificationResult.questionBatchesCount} Emails (${notificationResult.assignmentsCount} Qs)` : 'Email Sent (Counts as 1)'}
-                      </div>
-                    </div>
-                    <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#059669' }}>{notificationResult.totalRecipients}</div>
-                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Students Reached</div>
-                    </div>
-                    <div style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid var(--surface-border)' }}>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--muted)' }}>{notificationResult.skippedNoEmail}</div>
-                      <div style={{ fontSize: '0.78rem', color: '#64748b' }}>No Email</div>
-                    </div>
-                  </div>
-                </div>
-
-                {notificationResult.skippedNoEmail > 0 && (
-                  <div style={{ marginBottom: '20px', fontSize: '0.85rem', color: '#64748b', background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}>
-                    <div style={{ marginBottom: '6px', color: '#0f172a' }}>
-                      <strong>Why were {notificationResult.skippedNoEmail} students skipped?</strong>
-                    </div>
-                    <div>
-                      These students do not have an email stored in the database. You can upload an Excel/CSV file with student emails or enter them manually on the Student Emails page.
-                    </div>
-                    <div style={{ marginTop: '12px' }}>
-                      <Link 
-                        href="/admin/emails" 
-                        className="btn btn-outline" 
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', padding: '6px 12px', textDecoration: 'none' }}
-                      >
-                        <Mail size={14} /> Open Student Emails Page &rarr;
-                      </Link>
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-                  <button 
-                    type="button" 
-                    onClick={handleCloseNotifyModal} 
-                    className="btn btn-primary"
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <form onSubmit={handleSendBulkNotifications} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* Target Audience Filter (Branch and Section Wise) */}
-                <div style={{ background: '#f8fafc', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ width: 24, height: 24, borderRadius: '6px', background: 'rgba(164, 14, 25, 0.08)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Filter size={13} />
-                      </div>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
-                        Target Audience (Branch &amp; Section Wise)
-                      </span>
-                    </div>
-                    {(notifyTargetBranch || notifyTargetSection) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNotifyTargetBranch("");
-                          setNotifyTargetSection("");
-                          refreshBulkPreview("", "", defaultDomain);
-                        }}
-                        style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
-                      >
-                        Reset to All
-                      </button>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
-                        Branch
-                      </label>
-                      <select
-                        value={notifyTargetBranch}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setNotifyTargetBranch(val);
-                          refreshBulkPreview(val, notifyTargetSection, defaultDomain);
-                        }}
-                        style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.84rem', background: 'white', color: '#0f172a', cursor: 'pointer' }}
-                      >
-                        <option value="">All Branches</option>
-                        {availableBranches.map(b => (
-                          <option key={b} value={b}>{b}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
-                        Section
-                      </label>
-                      <select
-                        value={notifyTargetSection}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setNotifyTargetSection(val);
-                          refreshBulkPreview(notifyTargetBranch, val, defaultDomain);
-                        }}
-                        style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.84rem', background: 'white', color: '#0f172a', cursor: 'pointer' }}
-                      >
-                        <option value="">All Sections</option>
-                        {availableSections.map(s => (
-                          <option key={s} value={s}>Section {s}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: '8px', fontSize: '0.76rem', color: '#64748b' }}>
-                    {notifyTargetBranch || notifyTargetSection ? (
-                      <span>
-                        Sending only to pending students in <strong style={{ color: 'var(--primary)' }}>{notifyTargetBranch || 'All Branches'}</strong> {notifyTargetSection ? `(Section ${notifyTargetSection})` : '(All Sections)'}
-                      </span>
-                    ) : (
-                      <span>Sending to all pending students across all branches and sections.</span>
-                    )}
-                  </div>
-
-                  {/* Student Batching / Slicing Controls (e.g. 80 students at a time) */}
-                  <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed #cbd5e1' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>
-                        Send to Students in Batches (Safety Limit)
-                      </label>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>
-                        {bulkPreviewData?.totalAvailablePendingStudents || bulkPreviewData?.totalUniquePendingStudents || 0} Total Pending
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                      {[
-                        { label: '80 Students at a time', value: 80 },
-                        { label: '50 Students at a time', value: 50 },
-                        { label: 'All Students at once', value: 0 }
-                      ].map(opt => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => {
-                            setMaxStudentsLimit(opt.value);
-                            setStudentBatchOffset(0);
-                            refreshBulkPreview(notifyTargetBranch, notifyTargetSection, defaultDomain, questionsPerEmail, opt.value, 0);
-                          }}
-                          style={{
-                            padding: '4px 10px', fontSize: '0.76rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer',
-                            border: maxStudentsLimit === opt.value ? '1px solid var(--primary)' : '1px solid var(--surface-border)',
-                            background: maxStudentsLimit === opt.value ? 'var(--primary)' : 'white',
-                            color: maxStudentsLimit === opt.value ? 'white' : 'var(--foreground)'
-                          }}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Batch pagination tabs if total students > batch size */}
-                    {maxStudentsLimit > 0 && bulkPreviewData && (bulkPreviewData.totalAvailablePendingStudents || bulkPreviewData.totalUniquePendingStudents) > maxStudentsLimit && (
-                      <div style={{ background: '#f1f5f9', padding: '8px 10px', borderRadius: '6px', marginTop: '6px' }}>
-                        <div style={{ fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
-                          Select Student Group to Email Now:
-                        </div>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                          {Array.from({ length: Math.ceil((bulkPreviewData.totalAvailablePendingStudents || bulkPreviewData.totalUniquePendingStudents) / maxStudentsLimit) }).map((_, idx) => {
-                            const start = idx * maxStudentsLimit + 1;
-                            const total = (bulkPreviewData.totalAvailablePendingStudents || bulkPreviewData.totalUniquePendingStudents);
-                            const end = Math.min((idx + 1) * maxStudentsLimit, total);
-                            const isSelected = studentBatchOffset === idx * maxStudentsLimit;
-                            return (
-                              <button
-                                key={idx}
-                                type="button"
-                                onClick={() => {
-                                  const newOffset = idx * maxStudentsLimit;
-                                  setStudentBatchOffset(newOffset);
-                                  refreshBulkPreview(notifyTargetBranch, notifyTargetSection, defaultDomain, questionsPerEmail, maxStudentsLimit, newOffset);
-                                }}
-                                style={{
-                                  padding: '3px 8px', fontSize: '0.74rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 600,
-                                  background: isSelected ? 'var(--primary)' : 'white',
-                                  color: isSelected ? 'white' : '#334155',
-                                  border: isSelected ? '1px solid var(--primary)' : '1px solid #cbd5e1',
-                                  boxShadow: isSelected ? '0 1px 2px rgba(164, 14, 25, 0.2)' : 'none'
-                                }}
-                              >
-                                Group {idx + 1} ({start}–{end})
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Questions Per Email Setting (Chunk Size) */}
-                {targetAssignmentIds.length > 10 && (
-                  <div style={{ background: '#f8fafc', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '12px 14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>
-                        Questions per Email ({targetAssignmentIds.length} Questions Selected)
-                      </label>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>
-                        {Math.ceil(targetAssignmentIds.length / questionsPerEmail)} Emails total
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                      {[
-                        { label: `25 Qs / Email (${Math.ceil(targetAssignmentIds.length / 25)} Emails) ⭐ Recommended`, value: 25 },
-                        { label: `20 Qs / Email (${Math.ceil(targetAssignmentIds.length / 20)} Emails)`, value: 20 },
-                        { label: `10 Qs / Email (${Math.ceil(targetAssignmentIds.length / 10)} Emails)`, value: 10 },
-                        { label: `All ${targetAssignmentIds.length} in 1 Digest Email`, value: targetAssignmentIds.length }
-                      ].map(opt => (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => {
-                            setQuestionsPerEmail(opt.value);
-                            refreshBulkPreview(notifyTargetBranch, notifyTargetSection, defaultDomain, opt.value, maxStudentsLimit, studentBatchOffset);
-                          }}
-                          style={{
-                            padding: '5px 10px', fontSize: '0.76rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer',
-                            border: questionsPerEmail === opt.value ? '1px solid var(--primary)' : '1px solid var(--surface-border)',
-                            background: questionsPerEmail === opt.value ? 'var(--primary)' : 'white',
-                            color: questionsPerEmail === opt.value ? 'white' : 'var(--foreground)'
-                          }}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Live Preview Stats */}
-                {loadingBulkPreview ? (
-                  <div style={{ padding: '16px', textAlign: 'center', color: 'var(--muted)', fontSize: '0.85rem' }}>
-                    Calculating unique pending students for {notifyTargetBranch || 'all branches'} {notifyTargetSection ? `(Section ${notifyTargetSection})` : ''}...
-                  </div>
-                ) : bulkPreviewData ? (
-                  <div style={{ background: '#f8fafc', border: '1px solid var(--surface-border)', borderRadius: '8px', padding: '14px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', textAlign: 'center' }}>
-                      <div style={{ background: 'white', padding: '10px 8px', borderRadius: '6px', border: '1px solid rgba(164, 14, 25, 0.2)' }}>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>{bulkPreviewData.totalUniquePendingStudents}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Pending Students</div>
-                      </div>
-                      <div style={{ background: 'white', padding: '10px 8px', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#16a34a' }}>{bulkPreviewData.totalRecipientsWithEmail}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>With Email in DB</div>
-                      </div>
-                      <div style={{ background: 'white', padding: '10px 8px', borderRadius: '6px', border: '1px solid var(--surface-border)' }}>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--muted)' }}>{bulkPreviewData.skippedNoEmailCount}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Missing Email</div>
-                      </div>
-                    </div>
-                    <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#475569', textAlign: 'center' }}>
-                      {targetAssignmentIds.length > 10 ? (
-                        <span>
-                          Will be sent across <strong>{bulkPreviewData.questionBatchesCount || Math.ceil(targetAssignmentIds.length / 10)} emails</strong> (maximum <strong>10 questions per email</strong>) in safe batches of 20 BCC recipients.
-                        </span>
-                      ) : (
-                        <span>
-                          Will be sent in <strong>{bulkPreviewData.estimatedBatches} message{bulkPreviewData.estimatedBatches > 1 ? 's' : ''}</strong> (in safe batches of 20 BCC recipients).
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Gmail Quota & Deliverability Safety Box */}
-                    {bulkPreviewData.totalRecipientDeliveries > 450 ? (
-                      <div style={{ marginTop: '12px', background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '6px', padding: '10px 12px', color: '#991b1b', fontSize: '0.8rem', lineHeight: 1.5, textAlign: 'left' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, marginBottom: '4px' }}>
-                          <AlertTriangle size={15} color="#e11d48" />
-                          <span>Exceeds Gmail Limit ({bulkPreviewData.totalRecipientDeliveries} / 500 Daily Recipients)</span>
-                        </div>
-                        <div>
-                          Google counts <strong>each recipient in BCC</strong> against your 500 daily quota ({bulkPreviewData.totalRecipientsWithEmail} students &times; {bulkPreviewData.questionBatchesCount} batches = ~<strong>{bulkPreviewData.totalRecipientDeliveries} deliveries</strong>). Exceeding this causes Google to reject emails with <em>&quot;Message blocked - appears suspicious (Error 69585)&quot;</em>.
-                        </div>
-                        <div style={{ marginTop: '6px', fontWeight: 600, color: '#7f1d1d' }}>
-                          💡 Recommended: Use the <strong>Branch &amp; Section</strong> filter above (e.g. Section A: ~50 students) or select fewer questions (1–10 questions) to keep total deliveries under 400.
-                        </div>
-                      </div>
-                    ) : bulkPreviewData.totalRecipientDeliveries > 0 ? (
-                      <div style={{ marginTop: '8px', fontSize: '0.78rem', color: '#16a34a', textAlign: 'center', fontWeight: 600 }}>
-                        ✅ Quota Check: ~{bulkPreviewData.totalRecipientDeliveries} recipient deliveries (safe within Gmail&apos;s 500 daily limit).
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {/* College Domain Fallback */}
-                <div>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
-                    College Domain Fallback (Optional)
-                  </label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input 
-                      type="text" 
-                      value={defaultDomain}
-                      onChange={(e) => setDefaultDomain(e.target.value)}
-                      placeholder="e.g. college.edu"
-                      style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--surface-border)', fontSize: '0.85rem' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => refreshBulkPreview(notifyTargetBranch, notifyTargetSection, defaultDomain)}
-                      className="btn btn-outline"
-                      style={{ padding: '8px 12px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
-                    >
-                      Apply Fallback
-                    </button>
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '4px', lineHeight: 1.4 }}>
-                    If a student doesn&apos;t have an email in the database, the system will fallback to <code>[RollNumber]@[domain]</code>.
-                  </div>
-                </div>
-
-                {/* Delivery Mode: BCC vs CC */}
-                <div>
-                  <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
-                    Delivery Mode
-                  </label>
-                  <div style={{ display: 'flex', gap: '20px', fontSize: '0.85rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                      <input 
-                        type="radio" 
-                        name="recipientMode" 
-                        value="bcc" 
-                        checked={recipientMode === 'bcc'} 
-                        onChange={() => setRecipientMode('bcc')} 
-                        style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
-                      />
-                      <span><strong>BCC</strong> (Recommended &bull; Keeps emails private)</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                      <input 
-                        type="radio" 
-                        name="recipientMode" 
-                        value="cc" 
-                        checked={recipientMode === 'cc'} 
-                        onChange={() => setRecipientMode('cc')} 
-                        style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
-                      />
-                      <span><strong>CC</strong> (All emails visible)</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Send Test Email Section */}
-                <div style={{ background: '#f8fafc', border: '1px dashed var(--surface-border)', borderRadius: '8px', padding: '12px 14px' }}>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                    Send Test Preview Email to Yourself
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '8px' }}>
-                    Verify how the digest email looks in your inbox before sending to students.
-                  </div>
-                  {testSuccessMessage && (
-                    <div style={{ color: '#059669', fontSize: '0.82rem', marginBottom: '8px', fontWeight: 500 }}>
-                      ✅ {testSuccessMessage}
-                    </div>
-                  )}
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input 
-                      type="email"
-                      value={testEmailInput}
-                      onChange={(e) => setTestEmailInput(e.target.value)}
-                      placeholder="armaan002609@gmail.com"
-                      style={{ flex: 1, padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--surface-border)', fontSize: '0.85rem' }}
-                    />
-                    <button
-                      type="button"
-                      disabled={isSendingTest || !testEmailInput}
-                      onClick={handleSendTestEmail}
-                      className="btn btn-outline"
-                      style={{ padding: '8px 12px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
-                    >
-                      {isSendingTest ? "Sending..." : "Send Test Email"}
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '6px' }}>
-                  <button 
-                    type="button" 
-                    onClick={handleCloseNotifyModal} 
-                    className="btn btn-outline"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="submit" 
-                    disabled={isSendingNotifications || (bulkPreviewData && bulkPreviewData.totalRecipientsWithEmail === 0 && !defaultDomain)} 
-                    className="btn btn-primary"
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    {isSendingNotifications ? (
-                      <>
-                        <div className="animate-spin" style={{ width: 14, height: 14, border: '2px solid white', borderTopColor: 'transparent', borderRadius: '50%' }}></div>
-                        <span>
-                          {targetAssignmentIds.length > questionsPerEmail
-                            ? `Dispatching ${Math.ceil(targetAssignmentIds.length / questionsPerEmail)} Emails (${questionsPerEmail} Qs/Email)...`
-                            : `Sending Email via ${recipientMode.toUpperCase()}...`}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Send size={15} />
-                        <span>
-                          Send Reminders ({bulkPreviewData?.totalRecipientsWithEmail || 0} Students
-                          {notifyTargetBranch ? ` in ${notifyTargetBranch}` : ''}
-                          {notifyTargetSection ? ` - Sec ${notifyTargetSection}` : ''} &bull;{' '}
-                          {targetAssignmentIds.length > questionsPerEmail ? `${Math.ceil(targetAssignmentIds.length / questionsPerEmail)} Emails (${questionsPerEmail} Qs/Email)` : '1 Email'})
-                        </span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-

@@ -25,6 +25,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
                 name: true,
                 email: true,
                 branch: true,
+                semester: true,
                 section: true
               }
             }
