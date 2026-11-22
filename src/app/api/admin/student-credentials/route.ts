@@ -552,6 +552,88 @@ export async function PATCH(req: Request) {
 
     const isLocked = body.isLocked;
 
+    // Bulk lock/unlock selected student IDs by array of IDs
+    if (Array.isArray(body.ids) && body.ids.length > 0) {
+      const result = await prisma.studentCredential.updateMany({
+        where: { id: { in: body.ids } },
+        data: { isLocked },
+      });
+
+      return NextResponse.json({
+        success: true,
+        scope: 'selected',
+        isLocked,
+        updatedCount: result.count,
+        message: isLocked
+          ? `Locked ${result.count} selected student ID(s).`
+          : `Unlocked ${result.count} selected student ID(s).`,
+      });
+    }
+
+    // Bulk lock/unlock filtered students (e.g. by Branch, Semester, Section)
+    if (body.scope === 'filtered' || (body.scope === 'all' && (body.branch || body.semester || body.section))) {
+      const { branch, semester, section, search } = body;
+      const conditions: any[] = [];
+      if (search && String(search).trim()) {
+        const s = String(search).trim();
+        conditions.push({
+          OR: [
+            { portalUsername: { contains: s, mode: 'insensitive' } },
+            { enrollmentNo: { contains: s, mode: 'insensitive' } },
+            { studentName: { contains: s, mode: 'insensitive' } },
+            { stream: { contains: s, mode: 'insensitive' } },
+            { section: { contains: s, mode: 'insensitive' } },
+          ],
+        });
+      }
+      if (branch && branch !== 'all' && branch !== 'All Branches') {
+        conditions.push({
+          OR: [
+            { stream: { equals: branch, mode: 'insensitive' } },
+            { student: { branch: { equals: branch, mode: 'insensitive' } } }
+          ]
+        });
+      }
+      if (semester && semester !== 'all' && semester !== 'All Semesters') {
+        const cleanSem = semester.replace(/[^0-9]/g, '');
+        conditions.push({
+          OR: [
+            { semester: { equals: semester, mode: 'insensitive' } },
+            { semester: { equals: cleanSem, mode: 'insensitive' } },
+            { student: { semester: { equals: semester, mode: 'insensitive' } } }
+          ]
+        });
+      }
+      if (section && section !== 'all' && section !== 'All Sections') {
+        const cleanSec = section.replace(/^(sec|section)\s*/i, '').trim();
+        conditions.push({
+          OR: [
+            { section: { equals: section, mode: 'insensitive' } },
+            { section: { equals: cleanSec, mode: 'insensitive' } },
+            { section: { contains: cleanSec, mode: 'insensitive' } },
+            { student: { section: { equals: section, mode: 'insensitive' } } },
+            { student: { section: { equals: cleanSec, mode: 'insensitive' } } }
+          ]
+        });
+      }
+
+      const where = conditions.length > 0 ? { AND: conditions } : {};
+      const result = await prisma.studentCredential.updateMany({
+        where,
+        data: { isLocked },
+      });
+
+      return NextResponse.json({
+        success: true,
+        scope: 'filtered',
+        isLocked,
+        updatedCount: result.count,
+        message: isLocked
+          ? `Locked ${result.count} student ID(s) matching current filter.`
+          : `Unlocked ${result.count} student ID(s) matching current filter.`,
+      });
+    }
+
     // Bulk lock/unlock all student IDs
     if (body.scope === 'all') {
       const result = await prisma.studentCredential.updateMany({

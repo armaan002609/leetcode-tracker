@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   Clock,
   Filter,
+  CheckSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -74,6 +75,8 @@ export default function StudentPortalAccessAdminPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [isBulkTogglingLock, setIsBulkTogglingLock] = useState(false);
   const [lockActionMessage, setLockActionMessage] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkProcessingSelection, setIsBulkProcessingSelection] = useState(false);
 
   // Upload / Paste states
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -199,6 +202,7 @@ export default function StudentPortalAccessAdminPage() {
           totalStudents: data.totalStudents,
         });
         setCredentials(data.credentials || []);
+        setSelectedIds([]);
         if (data.uniqueStreams && data.uniqueStreams.length > 0) {
           setAvailableStreams(data.uniqueStreams);
         }
@@ -262,19 +266,20 @@ export default function StudentPortalAccessAdminPage() {
     }
   };
 
-  const handleBulkLockToggle = async (lockAll: boolean) => {
-    const confirmText = lockAll
-      ? `Lock all ${stats.totalCredentials} student IDs? Students will NOT be able to log in until unlocked.`
-      : `Unlock all ${stats.totalCredentials} student IDs so students can log in?`;
+  const handleToggleSelectedLock = async (lock: boolean) => {
+    if (selectedIds.length === 0) return;
+    const confirmText = lock
+      ? `Lock ${selectedIds.length} selected student ID(s)? Students will NOT be able to log in.`
+      : `Unlock ${selectedIds.length} selected student ID(s)? Students will be able to log in.`;
     if (!window.confirm(confirmText)) return;
 
-    setIsBulkTogglingLock(true);
+    setIsBulkProcessingSelection(true);
     setLockActionMessage("");
     try {
       const res = await fetch("/api/admin/student-credentials", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scope: "all", isLocked: lockAll }),
+        body: JSON.stringify({ ids: selectedIds, isLocked: lock }),
       });
       if (res.status === 403) {
         setUnlocked(false);
@@ -282,7 +287,54 @@ export default function StudentPortalAccessAdminPage() {
       }
       const data = await res.json();
       if (res.ok) {
-        setLockActionMessage(data.message || (lockAll ? "All student IDs locked." : "All student IDs unlocked."));
+        setLockActionMessage(data.message || (lock ? "Selected student IDs locked." : "Selected student IDs unlocked."));
+        setSelectedIds([]);
+        await fetchCredentials();
+      } else {
+        alert(data.error || "Failed to update lock status for selected IDs.");
+      }
+    } catch (e: any) {
+      console.error(e);
+    } finally {
+      setIsBulkProcessingSelection(false);
+    }
+  };
+
+  const handleBulkLockToggle = async (lockAll: boolean) => {
+    const isFiltered = filterBranch !== "all" || filterSemester !== "all" || filterSection !== "all" || searchTerm || filterType !== "all";
+    const targetLabel = isFiltered ? `the ${stats.totalCredentials} filtered` : `all ${stats.totalCredentials}`;
+    const confirmText = lockAll
+      ? `Lock ${targetLabel} student IDs? Students will NOT be able to log in until unlocked.`
+      : `Unlock ${targetLabel} student IDs so students can log in?`;
+    if (!window.confirm(confirmText)) return;
+
+    setIsBulkTogglingLock(true);
+    setLockActionMessage("");
+    try {
+      const payload: any = { isLocked: lockAll };
+      if (isFiltered) {
+        payload.scope = "filtered";
+        payload.branch = filterBranch;
+        payload.semester = filterSemester;
+        payload.section = filterSection;
+        payload.search = searchTerm;
+      } else {
+        payload.scope = "all";
+      }
+
+      const res = await fetch("/api/admin/student-credentials", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.status === 403) {
+        setUnlocked(false);
+        return;
+      }
+      const data = await res.json();
+      if (res.ok) {
+        setLockActionMessage(data.message || (lockAll ? "Student IDs locked." : "Student IDs unlocked."));
+        setSelectedIds([]);
         await fetchCredentials();
       } else {
         alert(data.error || "Failed to update lock status.");
@@ -1239,6 +1291,31 @@ export default function StudentPortalAccessAdminPage() {
                     <>
                       <button
                         type="button"
+                        onClick={() => {
+                          if (selectedIds.length === credentials.length && credentials.length > 0) {
+                            setSelectedIds([]);
+                          } else {
+                            setSelectedIds(credentials.map((c) => c.id));
+                          }
+                        }}
+                        className="btn btn-outline"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          padding: "6px 11px",
+                          fontSize: "0.78rem",
+                          fontWeight: 600,
+                          color: selectedIds.length === credentials.length && credentials.length > 0 ? "#1e40af" : "var(--foreground)",
+                          borderColor: selectedIds.length === credentials.length && credentials.length > 0 ? "#93c5fd" : "var(--surface-border)",
+                          background: selectedIds.length === credentials.length && credentials.length > 0 ? "#eff6ff" : "var(--surface)",
+                        }}
+                        title={selectedIds.length === credentials.length && credentials.length > 0 ? "Deselect all visible IDs" : "Select all visible IDs"}
+                      >
+                        <CheckSquare size={13} /> {selectedIds.length === credentials.length && credentials.length > 0 ? "Deselect All" : `Select All (${credentials.length})`}
+                      </button>
+                      <button
+                        type="button"
                         disabled={isBulkTogglingLock || stats.unlockedCount === 0}
                         onClick={() => handleBulkLockToggle(true)}
                         className="btn btn-outline"
@@ -1254,9 +1331,9 @@ export default function StudentPortalAccessAdminPage() {
                           opacity: isBulkTogglingLock || stats.unlockedCount === 0 ? 0.5 : 1,
                           cursor: isBulkTogglingLock || stats.unlockedCount === 0 ? "not-allowed" : "pointer",
                         }}
-                        title="Lock all student IDs so no student can log in"
+                        title={filterBranch !== "all" || filterSemester !== "all" || filterSection !== "all" ? `Lock all ${stats.totalCredentials} filtered student IDs` : "Lock all student IDs"}
                       >
-                        <Lock size={13} /> Lock All IDs
+                        <Lock size={13} /> {filterBranch !== "all" || filterSemester !== "all" || filterSection !== "all" ? `Lock Filtered (${stats.totalCredentials})` : "Lock All IDs"}
                       </button>
                       <button
                         type="button"
@@ -1275,9 +1352,9 @@ export default function StudentPortalAccessAdminPage() {
                           opacity: isBulkTogglingLock || stats.lockedCount === 0 ? 0.5 : 1,
                           cursor: isBulkTogglingLock || stats.lockedCount === 0 ? "not-allowed" : "pointer",
                         }}
-                        title="Unlock all student IDs so students can log in"
+                        title={filterBranch !== "all" || filterSemester !== "all" || filterSection !== "all" ? `Unlock all ${stats.totalCredentials} filtered student IDs` : "Unlock all student IDs"}
                       >
-                        <Unlock size={13} /> Unlock All IDs
+                        <Unlock size={13} /> {filterBranch !== "all" || filterSemester !== "all" || filterSection !== "all" ? `Unlock Filtered (${stats.totalCredentials})` : "Unlock All IDs"}
                       </button>
                     </>
                   )}
@@ -1425,26 +1502,139 @@ export default function StudentPortalAccessAdminPage() {
                     No student portal logins found for this filter.
                   </div>
                 ) : (
-                  <div className="data-table-wrapper" style={{ maxHeight: "480px", overflowY: "auto" }}>
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th style={{ padding: "10px 14px" }}>Roll No (Username)</th>
-                          <th style={{ padding: "10px 14px" }}>Enrollment No (Password)</th>
-                          <th style={{ padding: "10px 14px" }}>Student Name</th>
-                          <th style={{ padding: "10px 14px" }}>Stream / Sem / Sec</th>
-                          <th style={{ padding: "10px 14px" }}>Portal Login Status</th>
-                          <th style={{ padding: "10px 14px" }}>Roster Link</th>
-                          <th style={{ padding: "10px 14px" }}>Login Access</th>
-                          <th style={{ padding: "10px 14px", textAlign: "right" }}>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {credentials.map((c) => {
-                          const isLocked = Boolean(c.isLocked);
-                          const isTogglingThis = togglingId === c.id;
-                          return (
-                            <tr key={c.id} style={{ background: isLocked ? "#fff5f5" : undefined }}>
+                  <>
+                    {selectedIds.length > 0 && (
+                      <div style={{
+                        padding: "10px 16px",
+                        background: "#eff6ff",
+                        borderBottom: "1px solid #bfdbfe",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: "10px",
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "0.85rem", fontWeight: 600, color: "#1e40af" }}>
+                          <span>Selected <strong>{selectedIds.length}</strong> of {credentials.length} student(s)</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedIds(credentials.map((c) => c.id))}
+                            style={{ background: "none", border: "none", color: "#2563eb", textDecoration: "underline", cursor: "pointer", fontSize: "0.8rem", padding: 0 }}
+                          >
+                            Select All ({credentials.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedIds([])}
+                            style={{ background: "none", border: "none", color: "#64748b", textDecoration: "underline", cursor: "pointer", fontSize: "0.8rem", padding: 0 }}
+                          >
+                            Clear Selection
+                          </button>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <button
+                            type="button"
+                            disabled={isBulkProcessingSelection}
+                            onClick={() => handleToggleSelectedLock(false)}
+                            className="btn btn-outline"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              padding: "6px 14px",
+                              fontSize: "0.82rem",
+                              fontWeight: 600,
+                              color: "#059669",
+                              borderColor: "#a7f3d0",
+                              background: "#ecfdf5",
+                              cursor: isBulkProcessingSelection ? "not-allowed" : "pointer",
+                              opacity: isBulkProcessingSelection ? 0.6 : 1,
+                            }}
+                            title="Unlock selected student IDs so they can log in"
+                          >
+                            <Unlock size={14} /> Unlock Selected ({selectedIds.length})
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isBulkProcessingSelection}
+                            onClick={() => handleToggleSelectedLock(true)}
+                            className="btn btn-outline"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              padding: "6px 14px",
+                              fontSize: "0.82rem",
+                              fontWeight: 600,
+                              color: "#dc2626",
+                              borderColor: "#fecaca",
+                              background: "#fef2f2",
+                              cursor: isBulkProcessingSelection ? "not-allowed" : "pointer",
+                              opacity: isBulkProcessingSelection ? 0.6 : 1,
+                            }}
+                            title="Lock selected student IDs so they cannot log in"
+                          >
+                            <Lock size={14} /> Lock Selected ({selectedIds.length})
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="data-table-wrapper" style={{ maxHeight: "480px", overflowY: "auto" }}>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th style={{ padding: "10px 14px", width: "40px", textAlign: "center" }}>
+                              <input
+                                type="checkbox"
+                                checked={credentials.length > 0 && selectedIds.length === credentials.length}
+                                ref={(el) => {
+                                  if (el) el.indeterminate = selectedIds.length > 0 && selectedIds.length < credentials.length;
+                                }}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedIds(credentials.map((c) => c.id));
+                                  } else {
+                                    setSelectedIds([]);
+                                  }
+                                }}
+                                style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "var(--primary)" }}
+                                title={credentials.length > 0 && selectedIds.length === credentials.length ? "Deselect All" : "Select All Visible IDs"}
+                              />
+                            </th>
+                            <th style={{ padding: "10px 14px" }}>Roll No (Username)</th>
+                            <th style={{ padding: "10px 14px" }}>Enrollment No (Password)</th>
+                            <th style={{ padding: "10px 14px" }}>Student Name</th>
+                            <th style={{ padding: "10px 14px" }}>Stream / Sem / Sec</th>
+                            <th style={{ padding: "10px 14px" }}>Portal Login Status</th>
+                            <th style={{ padding: "10px 14px" }}>Roster Link</th>
+                            <th style={{ padding: "10px 14px" }}>Login Access</th>
+                            <th style={{ padding: "10px 14px", textAlign: "right" }}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {credentials.map((c) => {
+                            const isLocked = Boolean(c.isLocked);
+                            const isTogglingThis = togglingId === c.id;
+                            const isSelected = selectedIds.includes(c.id);
+                            return (
+                              <tr key={c.id} style={{ background: isSelected ? "#eff6ff" : isLocked ? "#fff5f5" : undefined }}>
+                                <td style={{ padding: "10px 14px", width: "40px", textAlign: "center" }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedIds((prev) => [...prev, c.id]);
+                                      } else {
+                                        setSelectedIds((prev) => prev.filter((id) => id !== c.id));
+                                      }
+                                    }}
+                                    style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "var(--primary)" }}
+                                  />
+                                </td>
                               <td style={{ padding: "10px 14px", fontWeight: 600 }}>{c.portalUsername}</td>
                               <td style={{ padding: "10px 14px", fontFamily: "monospace", color: "var(--muted)" }}>
                                 {c.enrollmentNo}
@@ -1548,6 +1738,7 @@ export default function StudentPortalAccessAdminPage() {
                       </tbody>
                     </table>
                   </div>
+                  </>
                 )}
               </div>
             </div>
