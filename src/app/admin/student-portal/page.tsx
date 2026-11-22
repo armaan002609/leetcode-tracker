@@ -1387,13 +1387,6 @@ export default function StudentPortalAccessAdminPage() {
                   Showing <strong style={{ color: "var(--foreground)" }}>{credentials.length}</strong> records (Total matched: {stats.totalCredentials})
                 </div>
               </div>
-                    />
-                    <button type="submit" className="btn btn-outline" style={{ padding: "6px 10px" }}>
-                      <Search size={14} />
-                    </button>
-                  </form>
-                </div>
-              </div>
 
               {lockActionMessage && (
                 <div style={{
