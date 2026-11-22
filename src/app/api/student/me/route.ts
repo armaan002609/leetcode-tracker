@@ -50,6 +50,15 @@ export async function GET() {
       );
     }
 
+    // Keep lastLoginAt updated when student interacts with their portal
+    prisma.studentCredential.update({
+      where: { id: credential.id },
+      data: {
+        lastLoginAt: new Date(),
+        loginCount: { increment: 1 }
+      }
+    }).catch(() => {});
+
     let resolvedStudentId = credential.studentId;
 
     // If not linked yet, try matching against Student roster on the fly

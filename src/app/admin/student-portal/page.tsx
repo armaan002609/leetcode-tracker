@@ -18,6 +18,8 @@ import {
   FileSpreadsheet,
   ClipboardPaste,
   ShieldAlert,
+  Clock,
+  Filter,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -55,12 +57,20 @@ export default function StudentPortalAccessAdminPage() {
     unlinkedCount: 0,
     lockedCount: 0,
     unlockedCount: 0,
+    loggedInCount: 0,
+    neverLoggedInCount: 0,
     totalStudents: 0,
   });
   const [credentials, setCredentials] = useState<any[]>([]);
   const [loadingList, setLoadingList] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "unlocked" | "locked" | "linked" | "unlinked">("all");
+  const [filterType, setFilterType] = useState<"all" | "logged_in" | "never_logged_in" | "unlocked" | "locked" | "linked" | "unlinked">("all");
+  const [filterBranch, setFilterBranch] = useState("all");
+  const [filterSemester, setFilterSemester] = useState("all");
+  const [filterSection, setFilterSection] = useState("all");
+  const [availableStreams, setAvailableStreams] = useState<string[]>([]);
+  const [availableSemesters, setAvailableSemesters] = useState<string[]>([]);
+  const [availableSections, setAvailableSections] = useState<string[]>([]);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [isBulkTogglingLock, setIsBulkTogglingLock] = useState(false);
   const [lockActionMessage, setLockActionMessage] = useState("");
@@ -104,7 +114,7 @@ export default function StudentPortalAccessAdminPage() {
     if (unlocked) {
       fetchCredentials();
     }
-  }, [unlocked, filterType]);
+  }, [unlocked, filterType, filterBranch, filterSemester, filterSection]);
 
   const checkLockStatus = async () => {
     setCheckingLock(true);
@@ -162,8 +172,15 @@ export default function StudentPortalAccessAdminPage() {
     setLoadingList(true);
     try {
       const q = searchOverride !== undefined ? searchOverride : searchTerm;
+      const params = new URLSearchParams({
+        filter: filterType,
+        search: q,
+        branch: filterBranch,
+        semester: filterSemester,
+        section: filterSection,
+      });
       const res = await fetch(
-        `/api/admin/student-credentials?filter=${filterType}&search=${encodeURIComponent(q)}`
+        `/api/admin/student-credentials?${params.toString()}`
       );
       if (res.status === 403) {
         setUnlocked(false);
@@ -177,9 +194,20 @@ export default function StudentPortalAccessAdminPage() {
           unlinkedCount: data.unlinkedCount,
           lockedCount: data.lockedCount ?? 0,
           unlockedCount: data.unlockedCount ?? data.totalCredentials,
+          loggedInCount: data.loggedInCount ?? 0,
+          neverLoggedInCount: data.neverLoggedInCount ?? 0,
           totalStudents: data.totalStudents,
         });
         setCredentials(data.credentials || []);
+        if (data.uniqueStreams && data.uniqueStreams.length > 0) {
+          setAvailableStreams(data.uniqueStreams);
+        }
+        if (data.uniqueSemesters && data.uniqueSemesters.length > 0) {
+          setAvailableSemesters(data.uniqueSemesters);
+        }
+        if (data.uniqueSections && data.uniqueSections.length > 0) {
+          setAvailableSections(data.uniqueSections);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -1121,12 +1149,12 @@ export default function StudentPortalAccessAdminPage() {
               <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                   <h3 className="card-title" style={{ margin: 0 }}>Uploaded Student Logins</h3>
-                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
                     <button
                       type="button"
                       onClick={() => setFilterType("all")}
                       style={{
-                        padding: "4px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
+                        padding: "5px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
                         background: filterType === "all" ? "var(--primary)" : "#f1f5f9",
                         color: filterType === "all" ? "white" : "var(--muted)",
                       }}
@@ -1135,9 +1163,35 @@ export default function StudentPortalAccessAdminPage() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => setFilterType("logged_in")}
+                      style={{
+                        padding: "5px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
+                        background: filterType === "logged_in" ? "#047857" : "#ecfdf5",
+                        color: filterType === "logged_in" ? "white" : "#065f46",
+                        border: filterType === "logged_in" ? "none" : "1px solid #a7f3d0",
+                      }}
+                      title="Show students who have logged into their Student Portal"
+                    >
+                      ✓ Logged In ({stats.loggedInCount})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFilterType("never_logged_in")}
+                      style={{
+                        padding: "5px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
+                        background: filterType === "never_logged_in" ? "#b45309" : "#fffbeb",
+                        color: filterType === "never_logged_in" ? "white" : "#92400e",
+                        border: filterType === "never_logged_in" ? "none" : "1px solid #fde68a",
+                      }}
+                      title="Show students who have NEVER logged in yet"
+                    >
+                      ⏳ Never Logged In ({stats.neverLoggedInCount})
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setFilterType("unlocked")}
                       style={{
-                        padding: "4px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
+                        padding: "5px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
                         background: filterType === "unlocked" ? "#059669" : "#f1f5f9",
                         color: filterType === "unlocked" ? "white" : "var(--muted)",
                       }}
@@ -1148,7 +1202,7 @@ export default function StudentPortalAccessAdminPage() {
                       type="button"
                       onClick={() => setFilterType("locked")}
                       style={{
-                        padding: "4px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
+                        padding: "5px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
                         background: filterType === "locked" ? "#dc2626" : "#f1f5f9",
                         color: filterType === "locked" ? "white" : "var(--muted)",
                       }}
@@ -1159,7 +1213,7 @@ export default function StudentPortalAccessAdminPage() {
                       type="button"
                       onClick={() => setFilterType("linked")}
                       style={{
-                        padding: "4px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
+                        padding: "5px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
                         background: filterType === "linked" ? "#10b981" : "#f1f5f9",
                         color: filterType === "linked" ? "white" : "var(--muted)",
                       }}
@@ -1170,7 +1224,7 @@ export default function StudentPortalAccessAdminPage() {
                       type="button"
                       onClick={() => setFilterType("unlinked")}
                       style={{
-                        padding: "4px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
+                        padding: "5px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
                         background: filterType === "unlinked" ? "#f59e0b" : "#f1f5f9",
                         color: filterType === "unlinked" ? "white" : "var(--muted)",
                       }}
@@ -1248,6 +1302,99 @@ export default function StudentPortalAccessAdminPage() {
                 </div>
               </div>
 
+              {/* Branch / Stream, Semester, and Section Dropdowns Filter Bar */}
+              <div style={{
+                padding: "10px 16px",
+                background: "#f8fafc",
+                borderBottom: "1px solid var(--surface-border)",
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: "12px",
+                justifyContent: "space-between"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--muted)" }}>Branch / Stream:</label>
+                    <select
+                      value={filterBranch}
+                      onChange={(e) => setFilterBranch(e.target.value)}
+                      style={{ padding: "5px 9px", borderRadius: "6px", border: "1px solid var(--surface-border)", fontSize: "0.82rem", background: "var(--surface)" }}
+                    >
+                      <option value="all">All Branches</option>
+                      {availableStreams.map((st) => (
+                        <option key={st} value={st}>{st}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--muted)" }}>Semester:</label>
+                    <select
+                      value={filterSemester}
+                      onChange={(e) => setFilterSemester(e.target.value)}
+                      style={{ padding: "5px 9px", borderRadius: "6px", border: "1px solid var(--surface-border)", fontSize: "0.82rem", background: "var(--surface)" }}
+                    >
+                      <option value="all">All Semesters</option>
+                      {["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"].map((s) => (
+                        <option key={s} value={s}>{s} Sem</option>
+                      ))}
+                      {availableSemesters.filter(s => !["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"].includes(s)).map((s) => (
+                        <option key={s} value={s}>Sem {s}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "var(--muted)" }}>Section:</label>
+                    <select
+                      value={filterSection}
+                      onChange={(e) => setFilterSection(e.target.value)}
+                      style={{ padding: "5px 9px", borderRadius: "6px", border: "1px solid var(--surface-border)", fontSize: "0.82rem", background: "var(--surface)" }}
+                    >
+                      <option value="all">All Sections</option>
+                      {availableSections.length > 0 ? (
+                        availableSections.map((sec) => (
+                          <option key={sec} value={sec}>Sec {sec}</option>
+                        ))
+                      ) : (
+                        Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)).map((sec) => (
+                          <option key={sec} value={sec}>Sec {sec}</option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+
+                  {(filterBranch !== "all" || filterSemester !== "all" || filterSection !== "all" || searchTerm || filterType !== "all") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterBranch("all");
+                        setFilterSemester("all");
+                        setFilterSection("all");
+                        setSearchTerm("");
+                        setFilterType("all");
+                      }}
+                      className="btn btn-outline"
+                      style={{ padding: "4px 8px", fontSize: "0.75rem", color: "var(--muted)", height: "fit-content" }}
+                    >
+                      Reset All Filters
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
+                  Showing <strong style={{ color: "var(--foreground)" }}>{credentials.length}</strong> records (Total matched: {stats.totalCredentials})
+                </div>
+              </div>
+                    />
+                    <button type="submit" className="btn btn-outline" style={{ padding: "6px 10px" }}>
+                      <Search size={14} />
+                    </button>
+                  </form>
+                </div>
+              </div>
+
               {lockActionMessage && (
                 <div style={{
                   padding: "10px 16px",
@@ -1293,6 +1440,7 @@ export default function StudentPortalAccessAdminPage() {
                           <th style={{ padding: "10px 14px" }}>Enrollment No (Password)</th>
                           <th style={{ padding: "10px 14px" }}>Student Name</th>
                           <th style={{ padding: "10px 14px" }}>Stream / Sem / Sec</th>
+                          <th style={{ padding: "10px 14px" }}>Portal Login Status</th>
                           <th style={{ padding: "10px 14px" }}>Roster Link</th>
                           <th style={{ padding: "10px 14px" }}>Login Access</th>
                           <th style={{ padding: "10px 14px", textAlign: "right" }}>Action</th>
@@ -1315,6 +1463,26 @@ export default function StudentPortalAccessAdminPage() {
                                 {[c.stream || c.student?.branch, c.semester ? `Sem ${c.semester}` : null, c.section ? `Sec ${c.section}` : null, c.labBatch]
                                   .filter(Boolean)
                                   .join(" • ") || "—"}
+                              </td>
+                              <td style={{ padding: "10px 14px" }}>
+                                {c.lastLoginAt ? (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                                    <span className="status-badge success" style={{ display: "inline-flex", alignItems: "center", gap: "4px", width: "fit-content", fontSize: "0.76rem" }}>
+                                      <CheckCircle2 size={12} /> Logged In {c.loginCount > 1 ? `(${c.loginCount}x)` : ''}
+                                    </span>
+                                    <span style={{ fontSize: "0.71rem", color: "var(--muted)", whiteSpace: "nowrap" }}>
+                                      {new Intl.DateTimeFormat('en-IN', {
+                                        timeZone: 'Asia/Kolkata',
+                                        day: '2-digit', month: 'short', year: 'numeric',
+                                        hour: '2-digit', minute: '2-digit', hour12: true
+                                      }).format(new Date(c.lastLoginAt))}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="status-badge pending" style={{ background: "#f8fafc", color: "#64748b", borderColor: "#e2e8f0", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.76rem" }}>
+                                    <Clock size={12} /> Never Logged In
+                                  </span>
+                                )}
                               </td>
                               <td style={{ padding: "10px 14px" }}>
                                 {c.studentId ? (

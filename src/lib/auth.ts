@@ -87,12 +87,18 @@ export const authOptions: NextAuthOptions = {
               );
               if (matchedId) {
                 resolvedStudentId = matchedId;
-                prisma.studentCredential.update({
-                  where: { id: studentCred.id },
-                  data: { studentId: matchedId },
-                }).catch(() => {});
               }
             }
+
+            // Record successful student portal login timestamp and counter
+            prisma.studentCredential.update({
+              where: { id: studentCred.id },
+              data: {
+                lastLoginAt: new Date(),
+                loginCount: { increment: 1 },
+                ...(resolvedStudentId && !studentCred.studentId ? { studentId: resolvedStudentId } : {})
+              },
+            }).catch(() => {});
 
             return {
               id: studentCred.id,

@@ -34,7 +34,9 @@ export async function ensureStudentCredentialTable(): Promise<void> {
 
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "StudentCredential"
-      ADD COLUMN IF NOT EXISTS "isLocked" BOOLEAN NOT NULL DEFAULT false;
+      ADD COLUMN IF NOT EXISTS "isLocked" BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS "lastLoginAt" TIMESTAMP(3),
+      ADD COLUMN IF NOT EXISTS "loginCount" INTEGER NOT NULL DEFAULT 0;
     `);
 
     await prisma.$executeRawUnsafe(`

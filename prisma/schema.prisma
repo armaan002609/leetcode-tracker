@@ -95,20 +95,23 @@ model Submission {
 }
 
 model StudentCredential {
-  id             String   @id @default(uuid())
-  portalUsername String   @unique
+  id             String    @id @default(uuid())
+  portalUsername String    @unique
   enrollmentNo   String
   passwordHash   String
-  isLocked       Boolean  @default(false)
+  isLocked       Boolean   @default(false)
+  lastLoginAt    DateTime?
+  loginCount     Int       @default(0)
   studentName    String?
   stream         String?
   semester       String?
   section        String?
   labBatch       String?
-  studentId      String?  @unique
-  student        Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  studentId      String?   @unique
+  student        Student?  @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([enrollmentNo])
+  @@index([lastLoginAt])
 }

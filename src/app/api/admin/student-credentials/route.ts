@@ -52,13 +52,15 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const search = (searchParams.get('search') || '').trim();
-    const filter = searchParams.get('filter') || 'all'; // 'all' | 'linked' | 'unlinked' | 'locked' | 'unlocked'
+    const filter = searchParams.get('filter') || 'all'; // 'all' | 'logged_in' | 'never_logged_in' | 'linked' | 'unlinked' | 'locked' | 'unlocked'
+    const branch = (searchParams.get('branch') || '').trim();
+    const semester = (searchParams.get('semester') || '').trim();
+    const section = (searchParams.get('section') || '').trim();
 
-    const where: any = {};
-    const conditions: any[] = [];
+    const baseConditions: any[] = [];
 
     if (search) {
-      conditions.push({
+      baseConditions.push({
         OR: [
           { portalUsername: { contains: search, mode: 'insensitive' } },
           { enrollmentNo: { contains: search, mode: 'insensitive' } },
@@ -69,7 +71,47 @@ export async function GET(req: Request) {
       });
     }
 
-    if (filter === 'linked') {
+    if (branch && branch !== 'all' && branch !== 'All Branches') {
+      baseConditions.push({
+        OR: [
+          { stream: { equals: branch, mode: 'insensitive' } },
+          { student: { branch: { equals: branch, mode: 'insensitive' } } }
+        ]
+      });
+    }
+
+    if (semester && semester !== 'all' && semester !== 'All Semesters') {
+      const cleanSem = semester.replace(/[^0-9]/g, '');
+      baseConditions.push({
+        OR: [
+          { semester: { equals: semester, mode: 'insensitive' } },
+          { semester: { equals: cleanSem, mode: 'insensitive' } },
+          { student: { semester: { equals: semester, mode: 'insensitive' } } }
+        ]
+      });
+    }
+
+    if (section && section !== 'all' && section !== 'All Sections') {
+      const cleanSec = section.replace(/^(sec|section)\s*/i, '').trim();
+      baseConditions.push({
+        OR: [
+          { section: { equals: section, mode: 'insensitive' } },
+          { section: { equals: cleanSec, mode: 'insensitive' } },
+          { section: { contains: cleanSec, mode: 'insensitive' } },
+          { student: { section: { equals: section, mode: 'insensitive' } } },
+          { student: { section: { equals: cleanSec, mode: 'insensitive' } } }
+        ]
+      });
+    }
+
+    const baseWhere: any = baseConditions.length > 0 ? { AND: baseConditions } : {};
+
+    const conditions: any[] = [...baseConditions];
+    if (filter === 'logged_in') {
+      conditions.push({ lastLoginAt: { not: null } });
+    } else if (filter === 'never_logged_in') {
+      conditions.push({ lastLoginAt: null });
+    } else if (filter === 'linked') {
       conditions.push({ studentId: { not: null } });
     } else if (filter === 'unlinked') {
       conditions.push({ studentId: null });
@@ -79,24 +121,40 @@ export async function GET(req: Request) {
       conditions.push({ isLocked: false });
     }
 
-    if (conditions.length > 0) {
-      where.AND = conditions;
-    }
+    const where: any = conditions.length > 0 ? { AND: conditions } : {};
 
-    const [totalCredentials, linkedCount, lockedCount, totalStudents, credentials] = await Promise.all([
-      prisma.studentCredential.count(),
-      prisma.studentCredential.count({ where: { studentId: { not: null } } }),
-      prisma.studentCredential.count({ where: { isLocked: true } }),
+    const [
+      totalCredentials,
+      linkedCount,
+      lockedCount,
+      loggedInCount,
+      neverLoggedInCount,
+      totalStudents,
+      credentials,
+      rawStreams,
+      rawSemesters,
+      rawSections,
+      rawStudentBranches,
+      rawStudentSemesters,
+      rawStudentSections,
+    ] = await Promise.all([
+      prisma.studentCredential.count({ where: baseWhere }),
+      prisma.studentCredential.count({ where: { ...baseWhere, studentId: { not: null } } }),
+      prisma.studentCredential.count({ where: { ...baseWhere, isLocked: true } }),
+      prisma.studentCredential.count({ where: { ...baseWhere, lastLoginAt: { not: null } } }),
+      prisma.studentCredential.count({ where: { ...baseWhere, lastLoginAt: null } }),
       prisma.student.count(),
       prisma.studentCredential.findMany({
         where,
-        take: 300,
-        orderBy: { portalUsername: 'asc' },
+        take: 500,
+        orderBy: [{ isLocked: 'desc' }, { portalUsername: 'asc' }],
         select: {
           id: true,
           portalUsername: true,
           enrollmentNo: true,
           isLocked: true,
+          lastLoginAt: true,
+          loginCount: true,
           studentName: true,
           stream: true,
           semester: true,
@@ -117,7 +175,28 @@ export async function GET(req: Request) {
           },
         },
       }),
+      prisma.studentCredential.findMany({ select: { stream: true }, distinct: ['stream'] }),
+      prisma.studentCredential.findMany({ select: { semester: true }, distinct: ['semester'] }),
+      prisma.studentCredential.findMany({ select: { section: true }, distinct: ['section'] }),
+      prisma.student.findMany({ select: { branch: true }, distinct: ['branch'] }),
+      prisma.student.findMany({ select: { semester: true }, distinct: ['semester'] }),
+      prisma.student.findMany({ select: { section: true }, distinct: ['section'] }),
     ]);
+
+    const uniqueStreams = Array.from(new Set([
+      ...rawStreams.map(s => s.stream),
+      ...rawStudentBranches.map(s => s.branch),
+    ].filter(Boolean))).sort();
+
+    const uniqueSemesters = Array.from(new Set([
+      ...rawSemesters.map(s => s.semester),
+      ...rawStudentSemesters.map(s => s.semester),
+    ].filter(Boolean))).sort((a: any, b: any) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+
+    const uniqueSections = Array.from(new Set([
+      ...rawSections.map(s => s.section),
+      ...rawStudentSections.map(s => s.section),
+    ].filter(Boolean))).sort((a: any, b: any) => String(a).localeCompare(String(b), undefined, { numeric: true }));
 
     return NextResponse.json({
       totalCredentials,
@@ -125,7 +204,12 @@ export async function GET(req: Request) {
       unlinkedCount: totalCredentials - linkedCount,
       lockedCount,
       unlockedCount: totalCredentials - lockedCount,
+      loggedInCount,
+      neverLoggedInCount: totalCredentials - loggedInCount,
       totalStudents,
+      uniqueStreams,
+      uniqueSemesters,
+      uniqueSections,
       credentials,
     });
   } catch (error: any) {

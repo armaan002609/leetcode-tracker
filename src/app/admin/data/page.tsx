@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronRight, Search, Database, ChevronLeft, Download, CheckCircle2, Clock, Lock, HelpCircle, AlertTriangle, RotateCw, Edit2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, Database, ChevronLeft, Download, CheckCircle2, Clock, Lock, HelpCircle, AlertTriangle, RotateCw, Edit2, Users, X, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 const StatusIcon = ({ status }: { status: string }) => {
@@ -40,6 +40,51 @@ export default function DataExplorer() {
   const [editingStudent, setEditingStudent] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({ name: '', rollNumber: '', branch: '', semester: '', section: '', mentor: '', url: '' });
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+
+  // Batch section mentor edit states
+  const [showSectionMentorModal, setShowSectionMentorModal] = useState(false);
+  const [batchBranch, setBatchBranch] = useState("");
+  const [batchSection, setBatchSection] = useState("");
+  const [batchMentor, setBatchMentor] = useState("");
+  const [isSubmittingBatchMentor, setIsSubmittingBatchMentor] = useState(false);
+  const [batchMentorSuccess, setBatchMentorSuccess] = useState("");
+  const [batchMentorError, setBatchMentorError] = useState("");
+
+  const handleBatchMentorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!batchSection.trim() || !batchMentor.trim()) {
+      setBatchMentorError('Please provide both section and mentor name.');
+      return;
+    }
+    setIsSubmittingBatchMentor(true);
+    setBatchMentorError('');
+    setBatchMentorSuccess('');
+    try {
+      const res = await fetch('/api/admin/data', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          branch: batchBranch,
+          section: batchSection,
+          newMentor: batchMentor
+        })
+      });
+      const resData = await res.json();
+      if (res.ok) {
+        setBatchMentorSuccess(resData.message || 'Mentors updated successfully!');
+        setTimeout(() => {
+          setShowSectionMentorModal(false);
+          fetchData();
+        }, 1200);
+      } else {
+        setBatchMentorError(resData.error || 'Failed to update section mentors');
+      }
+    } catch (err: any) {
+      setBatchMentorError(err.message || 'Network error updating mentors');
+    } finally {
+      setIsSubmittingBatchMentor(false);
+    }
+  };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,6 +264,36 @@ export default function DataExplorer() {
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
+              </div>
+
+              <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBatchBranch(branch !== 'All Branches' ? branch : '');
+                    setBatchSection(section || '');
+                    setBatchMentor('');
+                    setBatchMentorSuccess('');
+                    setBatchMentorError('');
+                    setShowSectionMentorModal(true);
+                  }}
+                  className="btn btn-outline"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    color: 'var(--primary)',
+                    borderColor: 'var(--primary)',
+                    background: 'rgba(159, 18, 57, 0.05)',
+                  }}
+                  title="Batch change the assigned mentor for an entire section"
+                >
+                  <Users size={16} /> Edit Section Mentor
+                </button>
               </div>
             </div>
 
@@ -413,6 +488,110 @@ export default function DataExplorer() {
                 <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--surface-border)' }}>
                   <button type="button" onClick={() => setEditingStudent(null)} className="btn">Cancel</button>
                   <button type="submit" disabled={isSubmittingEdit} className="btn btn-primary">{isSubmittingEdit ? 'Saving...' : 'Save Changes'}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {showSectionMentorModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div style={{ background: 'var(--surface)', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '520px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--surface-border)', paddingBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Users size={20} color="var(--primary)" />
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>Batch Edit Section Mentor</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSectionMentorModal(false)}
+                  style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 4 }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginTop: 0, marginBottom: '16px' }}>
+                Update the assigned mentor for every student in a specific section at once.
+              </p>
+
+              {batchMentorError && (
+                <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertCircle size={16} /> {batchMentorError}
+                </div>
+              )}
+
+              {batchMentorSuccess && (
+                <div style={{ padding: '10px 14px', borderRadius: '8px', background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#047857', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CheckCircle2 size={16} /> {batchMentorSuccess}
+                </div>
+              )}
+
+              <form onSubmit={handleBatchMentorSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>
+                    Branch / Stream
+                  </label>
+                  <select
+                    value={batchBranch}
+                    onChange={(e) => setBatchBranch(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', background: 'var(--surface)' }}
+                  >
+                    <option value="">All Branches</option>
+                    {availableBranches.map((b) => (
+                      <option key={b} value={b}>{b}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>
+                    Section *
+                  </label>
+                  <select
+                    required
+                    value={batchSection}
+                    onChange={(e) => setBatchSection(e.target.value)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)', background: 'var(--surface)' }}
+                  >
+                    <option value="">Select Section</option>
+                    {Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)).map((s) => (
+                      <option key={s} value={s}>Section {s}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '6px' }}>
+                    New Mentor Name *
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    value={batchMentor}
+                    onChange={(e) => setBatchMentor(e.target.value)}
+                    placeholder="e.g. Mr. Rahul Dev Singh"
+                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--surface-border)' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px', paddingTop: '14px', borderTop: '1px solid var(--surface-border)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowSectionMentorModal(false)}
+                    className="btn"
+                    style={{ padding: '8px 16px' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingBatchMentor}
+                    className="btn btn-primary"
+                    style={{ padding: '8px 18px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    {isSubmittingBatchMentor ? 'Updating...' : 'Update Section Mentor'}
+                  </button>
                 </div>
               </form>
             </div>
