@@ -482,38 +482,6 @@ export default function DashboardView({ isDemo = false }: { isDemo?: boolean }) 
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Link
-                href="/demo/analytics"
-                className="btn btn-sm"
-                style={{
-                  background: 'rgba(255,255,255,0.18)',
-                  color: '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.35)',
-                  padding: '4px 12px',
-                  fontSize: '0.8rem',
-                  borderRadius: '6px',
-                  textDecoration: 'none',
-                  fontWeight: 500
-                }}
-              >
-                Deep Analytics
-              </Link>
-              <Link
-                href="/demo/student"
-                className="btn btn-sm"
-                style={{
-                  background: 'rgba(255,255,255,0.18)',
-                  color: '#ffffff',
-                  border: '1px solid rgba(255,255,255,0.35)',
-                  padding: '4px 12px',
-                  fontSize: '0.8rem',
-                  borderRadius: '6px',
-                  textDecoration: 'none',
-                  fontWeight: 500
-                }}
-              >
-                Student Portal
-              </Link>
-              <Link
                 href="/login"
                 className="btn btn-sm"
                 style={{
