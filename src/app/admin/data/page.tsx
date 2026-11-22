@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, ChevronRight, Search, Database, ChevronLeft, Download, CheckCircle2, Clock, Lock, HelpCircle, AlertTriangle, RotateCw, Edit2, Users, X, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, Database, ChevronLeft, Download, CheckCircle2, Clock, Lock, HelpCircle, AlertTriangle, RotateCw, Edit2, Users, X, AlertCircle, Target } from 'lucide-react';
 import Link from 'next/link';
 
 const StatusIcon = ({ status }: { status: string }) => {
@@ -188,11 +188,43 @@ export default function DataExplorer() {
           </Link>
         </div>
         <div className="topnav-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link href="/admin/users" className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '6px 12px', color: 'white', borderColor: 'rgba(255,255,255,0.4)' }}>
-            User Management
+          <Link
+            href="/admin/users"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              padding: '6px 14px',
+              borderRadius: '6px',
+              color: 'var(--primary)',
+              background: '#ffffff',
+              border: 'none',
+              textDecoration: 'none',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+            }}
+          >
+            <Users size={15} /> User Management
           </Link>
-          <Link href="/admin/assignments" className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', padding: '6px 12px', color: 'white', borderColor: 'rgba(255,255,255,0.4)' }}>
-            Assignments
+          <Link
+            href="/admin/assignments"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              padding: '6px 14px',
+              borderRadius: '6px',
+              color: 'var(--primary)',
+              background: '#ffffff',
+              border: 'none',
+              textDecoration: 'none',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+            }}
+          >
+            <Target size={15} /> Assignments
           </Link>
         </div>
       </nav>
