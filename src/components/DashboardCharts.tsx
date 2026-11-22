@@ -22,9 +22,10 @@ interface DashboardChartsProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rows: any[];
   onSelectStudent?: (id: string) => void;
+  isDemo?: boolean;
 }
 
-export default function DashboardCharts({ rows, onSelectStudent }: DashboardChartsProps) {
+export default function DashboardCharts({ rows, onSelectStudent, isDemo = false }: DashboardChartsProps) {
   const [leaderboardView, setLeaderboardView] = useState<'list' | 'chart'>('list');
   const [topCount, setTopCount] = useState<5 | 10>(10);
   const [cohortMetric, setCohortMetric] = useState<'average' | 'total' | 'activeRate'>('average');
@@ -257,12 +258,17 @@ export default function DashboardCharts({ rows, onSelectStudent }: DashboardChar
 
             <button
               type="button"
-              onClick={() => downloadGraphCsv(['Rank', 'Name', 'Roll Number', 'Branch', 'Solved'], topUsers, 'top_students.csv')}
-              title="Download CSV"
+              onClick={() => {
+                if (isDemo) return;
+                downloadGraphCsv(['Rank', 'Name', 'Roll Number', 'Branch', 'Solved'], topUsers, 'top_students.csv');
+              }}
+              disabled={isDemo}
+              title={isDemo ? "Export disabled in demo mode" : "Download CSV"}
               style={{
                 background: 'transparent',
                 border: 'none',
-                cursor: 'pointer',
+                cursor: isDemo ? 'not-allowed' : 'pointer',
+                opacity: isDemo ? 0.35 : 1,
                 color: 'var(--muted)',
                 padding: '4px',
                 display: 'flex',
@@ -497,12 +503,17 @@ export default function DashboardCharts({ rows, onSelectStudent }: DashboardChar
 
           <button
             type="button"
-            onClick={() => downloadGraphCsv(['Difficulty', 'Questions Solved', 'Percentage'], diffData, 'difficulty_distribution.csv')}
-            title="Download CSV"
+            onClick={() => {
+              if (isDemo) return;
+              downloadGraphCsv(['Difficulty', 'Questions Solved', 'Percentage'], diffData, 'difficulty_distribution.csv');
+            }}
+            disabled={isDemo}
+            title={isDemo ? "Export disabled in demo mode" : "Download CSV"}
             style={{
               background: 'transparent',
               border: 'none',
-              cursor: 'pointer',
+              cursor: isDemo ? 'not-allowed' : 'pointer',
+              opacity: isDemo ? 0.35 : 1,
               color: 'var(--muted)',
               padding: '4px',
               display: 'flex',
@@ -672,12 +683,17 @@ export default function DashboardCharts({ rows, onSelectStudent }: DashboardChar
 
             <button
               type="button"
-              onClick={() => downloadGraphCsv(['Cohort', 'Students', 'Active Solvers', 'Total Solved', 'Average'], cohortData, 'cohort_benchmark.csv')}
-              title="Download CSV"
+              onClick={() => {
+                if (isDemo) return;
+                downloadGraphCsv(['Cohort', 'Students', 'Active Solvers', 'Total Solved', 'Average'], cohortData, 'cohort_benchmark.csv');
+              }}
+              disabled={isDemo}
+              title={isDemo ? "Export disabled in demo mode" : "Download CSV"}
               style={{
                 background: 'transparent',
                 border: 'none',
-                cursor: 'pointer',
+                cursor: isDemo ? 'not-allowed' : 'pointer',
+                opacity: isDemo ? 0.35 : 1,
                 color: 'var(--muted)',
                 padding: '4px',
                 display: 'flex',

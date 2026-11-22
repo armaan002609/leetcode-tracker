@@ -4,6 +4,8 @@ import { scrapeSemaphore, delayWithJitter } from '@/lib/scraping/rateLimiter';
 
 export const dynamic = 'force-dynamic';
 import { z } from 'zod';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export const maxDuration = 300; // 5 minutes max per serverless invocation
 
@@ -16,6 +18,11 @@ const ChunkSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user as any).role === 'student') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const parsed = ChunkSchema.safeParse(body);
     

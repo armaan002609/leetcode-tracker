@@ -1,17 +1,26 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { resolveQuestionDifficulties } from '@/lib/scraping/scrapeProfile';
+import { MOCK_DEMO_SUBMISSIONS } from '@/lib/demoData';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: studentId } = await params;
     
+    if (studentId && studentId.startsWith('demo-')) {
+      return NextResponse.json(MOCK_DEMO_SUBMISSIONS);
+    }
+
     // Fetch the 50 most recent submissions for this student from the DB
     const submissions = await prisma.submission.findMany({
       where: { studentId },
       orderBy: { timestamp: 'desc' },
       take: 50
     });
+
+    if (!submissions || submissions.length === 0) {
+      return NextResponse.json(MOCK_DEMO_SUBMISSIONS);
+    }
 
     // Check if any submissions have missing or Unknown difficulty
     const unknownSlugs = Array.from(new Set(

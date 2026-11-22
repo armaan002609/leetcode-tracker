@@ -3,7 +3,7 @@
 import { signIn, getSession } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, User, Loader2 } from "lucide-react";
+import { Lock, User, Loader2, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -99,14 +99,42 @@ export default function LoginPage() {
             ) : 'Sign In'}
           </button>
 
-          <button
-            type="button"
-            onClick={() => router.push('/')}
-            className="btn btn-outline"
-            style={{ width: '100%', padding: '12px' }}
-          >
-            Return to Dashboard
-          </button>
+          <div style={{ marginTop: '12px', paddingTop: '16px', borderTop: '1px solid var(--surface-border)', textAlign: 'center' }}>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '0 0 10px 0' }}>
+              Reviewing this project for a Resume or Portfolio?
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push('/demo')}
+              className="btn"
+              style={{
+                width: '100%',
+                padding: '11px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                border: '1.5px solid var(--primary)',
+                background: 'rgba(164, 14, 25, 0.05)',
+                color: 'var(--primary)',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'var(--primary)';
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'rgba(164, 14, 25, 0.05)';
+                e.currentTarget.style.color = 'var(--primary)';
+              }}
+            >
+              <Sparkles size={16} /> Explore Live Demo (Read-Only)
+            </button>
+          </div>
         </form>
       </div>
     </div>
