@@ -722,11 +722,6 @@ export default function DashboardView({ isDemo = false }: { isDemo?: boolean }) 
             </Link>
           </div>
         </div>
-              <Activity size={16} />
-              <span>Deep Analytics</span>
-            </Link>
-          </div>
-        </div>
 
         {/* 4 Executive KPI Cards (Problem-Solving & Sync Health) */}
         <div className="kpi-grid">
