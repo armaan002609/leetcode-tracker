@@ -1165,7 +1165,7 @@ export default function StudentPortalAccessAdminPage() {
                       type="button"
                       onClick={() => setFilterType("logged_in")}
                       style={{
-                        padding: "5px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
+                        padding: "5px 10px", borderRadius: "6px", fontSize: "0.78rem", cursor: "pointer", fontWeight: 600,
                         background: filterType === "logged_in" ? "#047857" : "#ecfdf5",
                         color: filterType === "logged_in" ? "white" : "#065f46",
                         border: filterType === "logged_in" ? "none" : "1px solid #a7f3d0",
@@ -1178,7 +1178,7 @@ export default function StudentPortalAccessAdminPage() {
                       type="button"
                       onClick={() => setFilterType("never_logged_in")}
                       style={{
-                        padding: "5px 10px", borderRadius: "6px", fontSize: "0.78rem", border: "none", cursor: "pointer", fontWeight: 600,
+                        padding: "5px 10px", borderRadius: "6px", fontSize: "0.78rem", cursor: "pointer", fontWeight: 600,
                         background: filterType === "never_logged_in" ? "#b45309" : "#fffbeb",
                         color: filterType === "never_logged_in" ? "white" : "#92400e",
                         border: filterType === "never_logged_in" ? "none" : "1px solid #fde68a",
