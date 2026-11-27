@@ -68,6 +68,26 @@ export async function ensureStudentCredentialTable(): Promise<void> {
       END $$;
     `);
 
+    // Enable Row-Level Security (RLS) on all public tables so Supabase's
+    // auto-generated PostgREST HTTP API does not expose tables publicly,
+    // resolving the "rls_disabled_in_public" critical security warning.
+    // Prisma connects as database owner/superuser so backend queries continue normally.
+    await prisma.$executeRawUnsafe(`
+      DO $$
+      DECLARE
+        r RECORD;
+      BEGIN
+        FOR r IN (
+          SELECT tablename 
+          FROM pg_tables 
+          WHERE schemaname = 'public' 
+            AND rowsecurity = false
+        ) LOOP
+          EXECUTE 'ALTER TABLE public.' || quote_ident(r.tablename) || ' ENABLE ROW LEVEL SECURITY;';
+        END LOOP;
+      END $$;
+    `);
+
     tableEnsured = true;
   } catch (err) {
     console.error('Error ensuring StudentCredential table:', err);
